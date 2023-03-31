@@ -1,0 +1,3 @@
+/target
+lib/sqlite3.lib
+Cargo.lock

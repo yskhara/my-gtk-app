@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/org/gtk_rs/example/">
+    <file compressed="true" preprocess="xml-stripblanks">main-window.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">receipt-edit-window.ui</file>
+  </gresource>
+  <gresource prefix="/org/gtk_rs/example/receipttableview">
+    <file compressed="true" preprocess="xml-stripblanks">receipttableviewitem_id.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">receipttableviewitem_datetime.ui</file>
+  </gresource>
+</gresources>

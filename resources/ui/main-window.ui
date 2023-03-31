@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="MyGtkAppWindow" parent="GtkApplicationWindow">
+    <property name="title">My GTK App</property>
+    <property name="default-width">640</property>
+    <property name="default-height">480</property>
+    <child>
+      <object class="GtkGrid" id="my_grid">
+        <child>
+          <object class="GtkButton" id="button">
+            <property name="label">Press me!</property>
+            <property name="margin-top">12</property>
+            <property name="margin-bottom">12</property>
+            <property name="margin-start">12</property>
+            <property name="margin-end">12</property>
+            <layout>
+              <property name="column">1</property>
+              <property name="row">1</property>
+            </layout>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton" id="button2">
+            <property name="label">Button 2</property>
+            <layout>
+              <property name="column">2</property>
+              <property name="row">1</property>
+            </layout>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton" id="button_add_entry">
+            <property name="label">Add entry</property>
+            <property name="margin-top">4</property>
+            <property name="margin-bottom">4</property>
+            <property name="margin-start">4</property>
+            <property name="margin-end">4</property>
+            <signal name="clicked" handler="button_add_entry_click_handler" swapped="true" />
+            <layout>
+              <property name="column">3</property>
+              <property name="row">1</property>
+            </layout>
+          </object>
+        </child>
+        <child>
+          <object class="GtkScrolledWindow">
+            <property name="hexpand">true</property>
+            <property name="vexpand">true</property>
+            <property name="min-content-width">400</property>
+            <property name="min-content-height">320</property>
+            <child>
+              <object class="GtkColumnView" id="receipt_list_view">
+                <child>
+                  <object class="GtkColumnViewColumn">
+                    <property name="title">ID</property>
+                    <property name="expand">false</property>
+                    <property name="factory">
+                      <object class="GtkSignalListItemFactory">
+                        <signal name="setup" handler="column_text_setup_handler" swapped="true"  />
+                        <signal name="bind" handler="column_id_bind_handler" />
+                      </object>
+                    </property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkColumnViewColumn">
+                    <property name="title">Date</property>
+                    <property name="expand">true</property>
+                    <property name="factory">
+                      <object class="GtkSignalListItemFactory">
+                        <signal name="setup" handler="column_text_setup_handler" swapped="true"  />
+                        <signal name="bind" handler="column_datetime_bind_handler" />
+                      </object>
+                    </property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <layout>
+              <property name="column">0</property>
+              <property name="row">0</property>
+              <property name="column-span">4</property>
+            </layout>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>
