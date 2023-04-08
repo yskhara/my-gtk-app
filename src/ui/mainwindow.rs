@@ -8,9 +8,9 @@ use gtk::{
     SingleSelection,
 };
 
+use super::ReceiptEditWindow;
 use crate::dal;
 use crate::receiptlistitem::ReceiptEntityObject;
-use super::ReceiptEditWindow;
 
 // ANCHOR: object
 // Object holding the state
@@ -96,9 +96,28 @@ impl MainWindow {
     }
 
     #[template_callback]
-    fn button_add_entry_click_handler(&self, _button: &gtk::Button) {
-        dal::add_receipt();
-        self.update_receipt_list();
+    async fn button_add_entry_click_handler(&self, button: &gtk::Button) {
+        // TODO: use mutex to block multiple calls at the same time
+        static MUTEX: once_cell::sync::Lazy<std::sync::Arc<std::sync::Mutex<i32>>> =
+            once_cell::sync::Lazy::new(|| std::sync::Arc::new(std::sync::Mutex::new(1)));
+        // The long running operation runs now in a separate thread
+        println!("Obtaining a mutex lock...");
+        let _lock = MUTEX.lock().unwrap();
+        println!("A mutex lock obtained. Sleeping for 5 seconds...");
+        //let button = button.clone();
+        //button.set_sensitive(false);
+        //let five_seconds = std::time::Duration::from_secs(5);
+        for i in 1..5
+        {
+            println!("{:}", i);
+            glib::timeout_future_seconds(1).await;
+        }
+        println!("5");
+        //button.set_sensitive(true);
+        println!("Done. Releasing the lock.");
+
+        //dal::add_receipt();
+        //self.update_receipt_list();
     }
 
     #[template_callback]
