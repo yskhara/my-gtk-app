@@ -8,12 +8,12 @@ use crate::entities::ReceiptEntity;
 
 mod imp {
     use super::*;
-    use std::{cell::RefCell, rc::Rc};
+    use std::{cell::RefCell, rc::Rc, sync::Arc};
 
     // Object holding the state
     #[derive(Default)]
     pub struct ReceiptEntityObject {
-        entity: Rc<RefCell<ReceiptEntity>>,
+        entity: Arc<RefCell<ReceiptEntity>>,
     }
 
     // The central trait for subclassing a GObject

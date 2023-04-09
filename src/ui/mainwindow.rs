@@ -79,45 +79,73 @@ impl ObjectImpl for MainWindow {
 
 #[gtk::template_callbacks]
 impl MainWindow {
-    fn update_receipt_list(&self) {
-        // Create a `Vec<IntegerObject>` with numbers from 0 to 100_000
-        let vector: Vec<ReceiptEntityObject> = dal::get_receipts()
-            .into_iter()
-            .map(ReceiptEntityObject::new)
-            .collect();
+    fn get_liststore(&self) -> Result<gio::ListStore, ()> {
+        if let Some(model) = self
+            .receipt_list_view
+            .get()
+            .model()
+            .and_downcast_ref::<SingleSelection>()
+        {
+            if let Some(model) = model.model().and_downcast_ref::<gio::ListStore>() {
+                Ok(model.clone())
+            } else {
+                Err(())
+            }
+        } else {
+            Err(())
+        }
+    }
 
-        let model = self.receipt_list_view.get().model();
-        let model = model.and_downcast_ref::<SingleSelection>().unwrap().model();
-        let model = model.and_downcast_ref::<gio::ListStore>().unwrap();
-        // Add the vector to the model
-        model.remove_all();
-        model.extend_from_slice(&vector);
-        //let list_view = ListView::new(Some(selection_model), Some(factory));
+    fn update_receipt_list(&self) {
+        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        let model = self.get_liststore().unwrap();
+
+        std::thread::spawn(move || {
+            let vector: Vec<ReceiptEntityObject> = dal::get_receipts()
+                .into_iter()
+                .map(ReceiptEntityObject::new)
+                .collect();
+            sender.send(&vector);
+        });
+
+        receiver.attach(
+            None,
+            glib::clone!(@weak model => @default-return Continue(false),
+                    move |vector| {
+                        // Add the vector to the model
+                        model.remove_all();
+                        model.extend_from_slice(&vector);
+                        //let list_view = ListView::new(Some(selection_model), Some(factory));
+                        Continue(true)
+                    }
+            ),
+        );
     }
 
     #[template_callback]
     async fn button_add_entry_click_handler(&self, button: &gtk::Button) {
-        // TODO: use mutex to block multiple calls at the same time
         static MUTEX: once_cell::sync::Lazy<std::sync::Arc<std::sync::Mutex<i32>>> =
             once_cell::sync::Lazy::new(|| std::sync::Arc::new(std::sync::Mutex::new(1)));
-        // The long running operation runs now in a separate thread
         println!("Obtaining a mutex lock...");
-        let _lock = MUTEX.lock().unwrap();
-        println!("A mutex lock obtained. Sleeping for 5 seconds...");
-        //let button = button.clone();
-        //button.set_sensitive(false);
-        //let five_seconds = std::time::Duration::from_secs(5);
-        for i in 1..5
-        {
-            println!("{:}", i);
-            glib::timeout_future_seconds(1).await;
-        }
-        println!("5");
-        //button.set_sensitive(true);
-        println!("Done. Releasing the lock.");
+        let lock = MUTEX.try_lock();
+        if let Ok(_mutex) = lock {
+            println!("A mutex lock obtained. Sleeping for 5 seconds...");
+            //let button = button.clone();
+            //button.set_sensitive(false);
+            //let five_seconds = std::time::Duration::from_secs(5);
+            for i in 1..5 {
+                println!("{:}", i);
+                //glib::timeout_future_seconds(1).await;
+            }
+            println!("5");
+            //button.set_sensitive(true);
+            println!("Done. Releasing the lock.");
 
-        //dal::add_receipt();
-        //self.update_receipt_list();
+            dal::add_receipt();
+            self.update_receipt_list();
+        } else {
+            println!("Failed to obtain a lock. Returning...")
+        }
     }
 
     #[template_callback]
