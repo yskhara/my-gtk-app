@@ -9,8 +9,9 @@ use gtk::{
 };
 
 use super::ReceiptEditWindow;
-use crate::dal;
+use crate::entities::ReceiptEntity;
 use crate::receiptlistitem::ReceiptEntityObject;
+use crate::{dal, entities};
 
 // ANCHOR: object
 // Object holding the state
@@ -101,25 +102,26 @@ impl MainWindow {
         let model = self.get_liststore().unwrap();
 
         std::thread::spawn(move || {
-            let vector: Vec<ReceiptEntityObject> = dal::get_receipts()
-                .into_iter()
-                .map(ReceiptEntityObject::new)
-                .collect();
-            sender.send(&vector);
+            let vector = dal::get_receipts();
+            for entity in vector {
+                println!("Sending message.");
+                let _ = sender.send(Ok(entity));
+            }
         });
+        model.remove_all();
 
-        receiver.attach(
-            None,
-            glib::clone!(@weak model => @default-return Continue(false),
-                    move |vector| {
-                        // Add the vector to the model
-                        model.remove_all();
-                        model.extend_from_slice(&vector);
-                        //let list_view = ListView::new(Some(selection_model), Some(factory));
-                        Continue(true)
-                    }
-            ),
-        );
+        let model = model.clone();
+        receiver.attach(None, move |obj: Result<ReceiptEntity, ()>| {
+            if let Ok(entity) = obj {
+                // Add the vector to the model
+                println!("Message received: {:?}", entity);
+                model.append(&ReceiptEntityObject::new(entity));
+                //let list_view = ListView::new(Some(selection_model), Some(factory));
+                Continue(true)
+            } else {
+                Continue(false)
+            }
+        });
     }
 
     #[template_callback]
@@ -154,7 +156,7 @@ impl MainWindow {
         let label = Label::new(Some(""));
         item.set_child(Some(&label));
 
-        println!("setup()");
+        //println!("setup()");
         //self.item_list.push(item);
     }
 
