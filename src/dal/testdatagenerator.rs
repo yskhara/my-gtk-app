@@ -15,13 +15,13 @@ pub fn generate_test_receipt_data() {
 
     let date_start = 1577804400;
     let date_end = 1672498799;
-    let num_entry = 100_000;
+    let num_entry = 10_000;
     let num_store = 100_000;
 
     let mut rng = rand::thread_rng();
-    let between = Uniform::from(0..(num_store - 1));
+    let between = Uniform::from(0..num_store);
 
-    for i in 0..(num_entry - 1) {
+    for i in 0..num_entry {
         statement
             .execute(&[
                 (

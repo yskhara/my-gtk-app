@@ -5,13 +5,15 @@ use glib::subclass::InitializingObject;
 use gtk::subclass::prelude::*;
 use gtk::{
     gio, glib, prelude::*, Button, ColumnView, CompositeTemplate, Label, SignalListItemFactory,
-    SingleSelection,
+    SingleSelection, ColumnViewColumn,
 };
 
 use super::ReceiptEditWindow;
 use crate::entities::ReceiptEntity;
 use crate::receiptlistitem::ReceiptEntityObject;
 use crate::{dal, entities};
+
+use crate::sqlliststore::SqlListStore;
 
 // ANCHOR: object
 // Object holding the state
@@ -56,6 +58,13 @@ impl ObjectImpl for MainWindow {
         // Call "constructed" on parent
         self.parent_constructed();
 
+        let sorter = self.receipt_list_view.sorter().unwrap();
+        for column in self.receipt_list_view.columns().into_iter(){
+            if let Ok(column) = column {
+                column.downcast::<ColumnViewColumn>().unwrap().set_sorter(Some(&sorter));
+            }
+        }
+
         // Connect to "clicked" signal of `button`
         self.button.connect_clicked(move |button| {
             // Set the label to "Hello World!" after the button has been clicked on
@@ -69,11 +78,19 @@ impl ObjectImpl for MainWindow {
             });
 
         // Create new model
-        let model = gio::ListStore::new(ReceiptEntityObject::static_type());
+        //let model = gio::ListStore::new(ReceiptEntityObject::static_type());
+        let model = SqlListStore::new();
+        println!("{:?}", model);
+        println!("is \"model\" a gio::ListModel? : {:?}", model.is::<gio::ListModel>());
+
+        let model = gtk::SortListModel::new(Some(model), Some(sorter));
+        
         let selection_model = SingleSelection::new(Some(model));
         self.receipt_list_view.set_model(Some(&selection_model));
 
-        self.update_receipt_list();
+        //self.update_receipt_list();
+
+        //dal::get_receipt_count();
     }
 }
 // ANCHOR_END: object_impl
@@ -104,9 +121,9 @@ impl MainWindow {
         std::thread::spawn(move || {
             let vector = dal::get_receipts();
             for entity in vector {
-                println!("Sending message.");
                 let _ = sender.send(Ok(entity));
             }
+            println!("All messages sent.");
         });
         model.remove_all();
 
@@ -114,11 +131,12 @@ impl MainWindow {
         receiver.attach(None, move |obj: Result<ReceiptEntity, ()>| {
             if let Ok(entity) = obj {
                 // Add the vector to the model
-                println!("Message received: {:?}", entity);
+                //println!("Message received: {:?}", entity);
                 model.append(&ReceiptEntityObject::new(entity));
                 //let list_view = ListView::new(Some(selection_model), Some(factory));
                 Continue(true)
             } else {
+                println!("All messages received.");
                 Continue(false)
             }
         });

@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use crate::entities::ReceiptEntity;
 use once_cell::sync::Lazy;
-use rusqlite::{Connection};
+use rusqlite::Connection;
 
 // data access layer
 
@@ -44,20 +44,22 @@ pub fn get_receipts() -> Vec<ReceiptEntity> {
     let query = "SELECT * FROM receipt ";
     let mut statement = connection.prepare(query).unwrap();
 
-    let entity_iter = statement.query_map([], |row| {
-        let e = ReceiptEntity {
-            id: row.get(0).unwrap(),
-            datetime: row.get(1).unwrap(),
-            store_key: 0,
-            currency_id: 0,
-            paid_amount: 0,
-            payment_method_key: 0,
-        };
-        //println!("{:#?}", &e);
-        Ok(e)
-    }).unwrap();
+    let entity_iter = statement
+        .query_map([], |row| {
+            let e = ReceiptEntity {
+                id: row.get(0).unwrap(),
+                datetime: row.get(1).unwrap(),
+                store_key: 0,
+                currency_id: 0,
+                paid_amount: 0,
+                payment_method_key: 0,
+            };
+            //println!("{:#?}", &e);
+            Ok(e)
+        })
+        .unwrap();
 
-    for e in entity_iter{
+    for e in entity_iter {
         receipt_list.push(e.unwrap());
     }
 
@@ -67,4 +69,46 @@ pub fn get_receipts() -> Vec<ReceiptEntity> {
 pub fn add_receipt() {
     let query = "INSERT INTO receipt (datetime, store_key, currency_key, paid_amount, payment_method_key) VALUES (1725269353, 2, 392, 2964, 1);";
     CONNECTION.lock().unwrap().execute(query, ()).unwrap();
+}
+
+pub fn get_receipt_count() -> u32 {
+    let query = "SELECT COUNT(id) from receipt;";
+    match CONNECTION
+        .lock()
+        .unwrap()
+        .query_row(query, [], |row| row.get::<usize, u32>(0))
+    {
+        Ok(data) => {
+            println!("{:}", data);
+            data
+        }
+        Err(err) => {
+            println!("An error detected: {:?}", err);
+            0
+        }
+    }
+}
+
+pub fn get_receipt(position: u32) -> Result<ReceiptEntity, rusqlite::Error> {
+    let query = "SELECT * FROM receipt WHERE id=?1;";
+
+    CONNECTION
+        .lock()
+        .unwrap()
+        .query_row(query, [position], |row| {
+            let id = row.get::<&str, u32>("id")?;
+            let datetime = row.get::<&str, i64>("datetime")?;
+            let store_key = row.get::<&str, u32>("store_key")?;
+            let currency_key = row.get::<&str, u32>("currency_key")?;
+            let paid_amount = row.get::<&str, u32>("paid_amount")?;
+            let payment_method_key = row.get::<&str, u32>("payment_method_key")?;
+            Ok(ReceiptEntity {
+                id: id,
+                datetime: datetime,
+                store_key: store_key,
+                currency_id: currency_key,
+                paid_amount: paid_amount,
+                payment_method_key: payment_method_key,
+            })
+        })
 }
