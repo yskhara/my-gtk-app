@@ -50,7 +50,7 @@
             <property name="min-content-height">320</property>
             <child>
               <object class="GtkColumnView" id="receipt_list_view">
-                <child>
+                <!-- <child>
                   <object class="GtkColumnViewColumn">
                     <property name="title">ID</property>
                     <property name="expand">false</property>
@@ -73,7 +73,7 @@
                       </object>
                     </property>
                   </object>
-                </child>
+                </child> -->
               </object>
             </child>
             <layout>

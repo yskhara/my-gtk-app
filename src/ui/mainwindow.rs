@@ -4,8 +4,8 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use glib::subclass::InitializingObject;
 use gtk::subclass::prelude::*;
 use gtk::{
-    gio, glib, prelude::*, Button, ColumnView, CompositeTemplate, Label, SignalListItemFactory,
-    SingleSelection, ColumnViewColumn,
+    gio, glib, prelude::*, Button, ColumnView, ColumnViewColumn, CompositeTemplate, Label,
+    SignalListItemFactory, SingleSelection,
 };
 
 use super::ReceiptEditWindow;
@@ -58,12 +58,58 @@ impl ObjectImpl for MainWindow {
         // Call "constructed" on parent
         self.parent_constructed();
 
+        let col1factory = gtk::SignalListItemFactory::new();
+        let col2factory = gtk::SignalListItemFactory::new();
+        col1factory.connect_setup(Self::column_text_setup_handler);
+        col2factory.connect_setup(Self::column_text_setup_handler);
+        col1factory.connect_bind(Self::column_id_bind_handler);
+        col2factory.connect_bind(Self::column_datetime_bind_handler);
+
+        let col1 = gtk::ColumnViewColumn::new(Some("ID"), Some(col1factory));
+        let col2 = gtk::ColumnViewColumn::new(Some("Date"), Some(col2factory));
+
+        // Create new model
+        //let model = gio::ListStore::new(ReceiptEntityObject::static_type());
+        //model.append(&ReceiptEntityObject::new(dal::get_receipt(1).unwrap()));
+        //model.append(&ReceiptEntityObject::new(dal::get_receipt(2).unwrap()));
+
         let sorter = self.receipt_list_view.sorter().unwrap();
-        for column in self.receipt_list_view.columns().into_iter(){
-            if let Ok(column) = column {
-                column.downcast::<ColumnViewColumn>().unwrap().set_sorter(Some(&sorter));
-            }
-        }
+
+        let model = SqlListStore::new(Some(sorter.clone()));
+        //let model = SqlListStore::new(None);
+        println!("{:?}", model);
+        println!(
+            "is \"model\" a gio::ListModel? : {:?}",
+            model.is::<gio::ListModel>()
+        );
+        //let model = gtk::SortListModel::new(Some(model), Some(sorter.clone()));
+        let selection_model = SingleSelection::new(Some(model));
+        self.receipt_list_view.set_model(Some(&selection_model));
+
+        let sorter = gtk::NumericSorter::new(Some(gtk::PropertyExpression::new(
+            ReceiptEntityObject::static_type(),
+            None::<gtk::Expression>,
+            // Some(gtk::PropertyExpression::new(
+            //     gtk::ListItem::static_type(),
+            //     None::<gtk::Expression>,
+            //     "item",
+            // )),
+            "id",
+        )));
+
+        col1.set_sorter(Some(&sorter));
+        col2.set_sorter(Some(&sorter));
+
+        self.receipt_list_view.append_column(&col1);
+        self.receipt_list_view.append_column(&col2);
+
+        // for column in self.receipt_list_view.columns().into_iter(){
+        //     if let Ok(column) = column {
+        //         let column = column.downcast::<ColumnViewColumn>().unwrap();
+        //         println!("{:?}", column);
+        //         column.set_sorter(Some(&sorter));
+        //     }
+        // }
 
         // Connect to "clicked" signal of `button`
         self.button.connect_clicked(move |button| {
@@ -77,16 +123,6 @@ impl ObjectImpl for MainWindow {
                 println!("{}", pos);
             });
 
-        // Create new model
-        //let model = gio::ListStore::new(ReceiptEntityObject::static_type());
-        let model = SqlListStore::new();
-        println!("{:?}", model);
-        println!("is \"model\" a gio::ListModel? : {:?}", model.is::<gio::ListModel>());
-
-        let model = gtk::SortListModel::new(Some(model), Some(sorter));
-        
-        let selection_model = SingleSelection::new(Some(model));
-        self.receipt_list_view.set_model(Some(&selection_model));
 
         //self.update_receipt_list();
 
@@ -169,7 +205,7 @@ impl MainWindow {
     }
 
     #[template_callback]
-    fn column_text_setup_handler(&self, item: &gtk::ListItem) {
+    fn column_text_setup_handler(_factory: &SignalListItemFactory, item: &gtk::ListItem) {
         let item = item.downcast_ref::<gtk::ListItem>().unwrap();
         let label = Label::new(Some(""));
         item.set_child(Some(&label));

@@ -8,6 +8,42 @@ use rusqlite::Connection;
 
 // data access layer
 
+pub enum ReceiptEntityColumn {
+    Id,
+    Datetime,
+    StoreKey,
+    CurrencyKey,
+    PaidAmount,
+    PaymentMethodKey,
+}
+
+pub enum SortOrder {
+    Ascending,
+    Descending,
+}
+
+impl ReceiptEntityColumn {
+    pub fn to_string(&self) -> &str {
+        match self {
+            ReceiptEntityColumn::Id => "id",
+            ReceiptEntityColumn::Datetime => "datetime",
+            ReceiptEntityColumn::StoreKey => "store_key",
+            ReceiptEntityColumn::CurrencyKey => "currency_key",
+            ReceiptEntityColumn::PaidAmount => "paid_amount",
+            ReceiptEntityColumn::PaymentMethodKey => "payment_method_key",
+        }
+    }
+}
+
+impl SortOrder {
+    pub fn to_string(&self) -> &str {
+        match self {
+            SortOrder::Ascending => "ASC",
+            SortOrder::Descending => "DESC",
+        }
+    }
+}
+
 static CONNECTION: Lazy<Mutex<Connection>> = Lazy::new(|| {
     println!("initializing");
     Mutex::new(Connection::open_in_memory().unwrap())
@@ -111,4 +147,30 @@ pub fn get_receipt(position: u32) -> Result<ReceiptEntity, rusqlite::Error> {
                 payment_method_key: payment_method_key,
             })
         })
+}
+
+pub fn get_receipts_id(
+    sort_by: Option<Vec<(ReceiptEntityColumn, SortOrder)>>,
+) -> Result<Vec<u32>, Box<dyn std::error::Error>> {
+    let mut query = std::string::String::from("SELECT id FROM receipt");
+
+    if let Some(vec) = sort_by {
+        for (column, order) in vec {
+            query += &format!(" ORDER BY {} {}", column.to_string(), order.to_string());
+        }
+    }
+
+    query += ";";
+
+    let mut vec = vec![];
+    for id in CONNECTION
+        .lock()?
+        .prepare(&query)?
+        .query_map([], |row| row.get::<&str, u32>("id"))?
+    {
+        if let Ok(id) = id {
+            vec.push(id)
+        }
+    }
+    Ok(vec)
 }
