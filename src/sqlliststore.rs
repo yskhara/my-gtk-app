@@ -32,7 +32,8 @@ mod imp {
     impl SqlListStore {
         pub fn on_sorter_changed(&self, sorter: &gtk::Sorter, _: gtk::SorterChange) {
             println!("sorter was changed: ");
-            println!("{:?}", sorter.downcast::<gtk::ColumnViewSorter>());
+            println!("{:?}", sorter.clone().downcast::<gtk::ColumnViewSorter>().unwrap().nth_sort_column(0));
+            println!("{:?}", sorter.clone().downcast::<gtk::ColumnViewSorter>().unwrap().nth_sort_column(1));
             //self.update_index_cache();
         }
 

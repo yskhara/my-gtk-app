@@ -205,7 +205,7 @@ impl MainWindow {
     }
 
     #[template_callback]
-    fn column_text_setup_handler(_factory: &SignalListItemFactory, item: &gtk::ListItem) {
+    fn column_text_setup_handler(_factory: &SignalListItemFactory, item: &glib::Object) {
         let item = item.downcast_ref::<gtk::ListItem>().unwrap();
         let label = Label::new(Some(""));
         item.set_child(Some(&label));
@@ -215,7 +215,7 @@ impl MainWindow {
     }
 
     #[template_callback]
-    fn column_id_bind_handler(_factory: &SignalListItemFactory, item: &gtk::ListItem) {
+    fn column_id_bind_handler(_factory: &SignalListItemFactory, item: &glib::Object) {
         let item = item.downcast_ref::<gtk::ListItem>().unwrap();
         let child = item.child().unwrap().downcast::<Label>().unwrap();
         let entry = item
@@ -229,7 +229,7 @@ impl MainWindow {
     }
 
     #[template_callback]
-    fn column_datetime_bind_handler(_factory: &SignalListItemFactory, item: &gtk::ListItem) {
+    fn column_datetime_bind_handler(_factory: &SignalListItemFactory, item: &glib::Object) {
         let item = item.downcast_ref::<gtk::ListItem>().unwrap();
         let child = item.child().unwrap().downcast::<Label>().unwrap();
         let entry = item
