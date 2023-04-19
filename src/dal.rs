@@ -33,6 +33,18 @@ impl ReceiptEntityColumn {
             ReceiptEntityColumn::PaymentMethodKey => "payment_method_key",
         }
     }
+
+    pub fn from_string(string: &str) -> Option<Self> {
+        match string {
+            "id" => Some(ReceiptEntityColumn::Id),
+            "datetime" => Some(ReceiptEntityColumn::Datetime),
+            "store_key" => Some(ReceiptEntityColumn::StoreKey),
+            "currency_key" => Some(ReceiptEntityColumn::CurrencyKey),
+            "paid_amount" => Some(ReceiptEntityColumn::PaidAmount),
+            "payment_method_key" => Some(ReceiptEntityColumn::PaymentMethodKey),
+            _ => None,
+        }
+    }
 }
 
 impl SortOrder {
@@ -155,12 +167,19 @@ pub fn get_receipts_id(
     let mut query = std::string::String::from("SELECT id FROM receipt");
 
     if let Some(vec) = sort_by {
-        for (column, order) in vec {
-            query += &format!(" ORDER BY {} {}", column.to_string(), order.to_string());
+        query += " ORDER BY";
+        for i in 0..vec.len() {
+            let (column, order) = &vec[i];
+            query += &format!(" {} {}", column.to_string(), order.to_string());
+            if i < vec.len() - 1 {
+                query += &",";
+            }
         }
     }
 
     query += ";";
+
+    println!("{:}", query);
 
     let mut vec = vec![];
     for id in CONNECTION

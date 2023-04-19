@@ -98,7 +98,9 @@ impl ObjectImpl for MainWindow {
         )));
 
         col1.set_sorter(Some(&sorter));
+        col1.set_id(Some(dal::ReceiptEntityColumn::Id.to_string()));
         col2.set_sorter(Some(&sorter));
+        col2.set_id(Some(dal::ReceiptEntityColumn::Datetime.to_string()));
 
         self.receipt_list_view.append_column(&col1);
         self.receipt_list_view.append_column(&col2);

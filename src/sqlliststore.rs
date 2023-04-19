@@ -21,36 +21,69 @@ mod imp {
         pub sorter: RefCell<Option<gtk::Sorter>>,
     }
 
+    pub struct SqlListStoreClass {}
+
     // The central trait for subclassing a GObject
     #[glib::object_subclass]
     impl ObjectSubclass for SqlListStore {
-        const NAME: &'static str = "SqlListStore";
+        const NAME: &'static str = "MercurySqlListStore";
         type Type = super::SqlListStore;
+        type ParentType = glib::Object;
         type Interfaces = (gio::ListModel,);
     }
 
     impl SqlListStore {
         pub fn on_sorter_changed(&self, sorter: &gtk::Sorter, _: gtk::SorterChange) {
             println!("sorter was changed: ");
-            println!("{:?}", sorter.clone().downcast::<gtk::ColumnViewSorter>().unwrap().nth_sort_column(0));
-            println!("{:?}", sorter.clone().downcast::<gtk::ColumnViewSorter>().unwrap().nth_sort_column(1));
-            //self.update_index_cache();
+            println!(
+                "{:?}",
+                sorter
+                    .clone()
+                    .downcast::<gtk::ColumnViewSorter>()
+                    .unwrap()
+                    .nth_sort_column(0)
+            );
+            println!(
+                "{:?}",
+                sorter
+                    .clone()
+                    .downcast::<gtk::ColumnViewSorter>()
+                    .unwrap()
+                    .nth_sort_column(1)
+            );
+            self.update_index_cache();
+            self.items_changed();
         }
 
         pub fn update_index_cache(&self) {
-            let mut sort_by = None;
+            let mut sort_by = vec![];
             if let Some(sorter) = self.sorter.borrow().clone() {
-                if let Ok(sorter) = sorter.downcast::<gtk::NumericSorter>() {
-                    let order = match sorter.sort_order() {
-                        gtk::SortType::Ascending => dal::SortOrder::Ascending,
-                        gtk::SortType::Descending => dal::SortOrder::Descending,
-                        _ => dal::SortOrder::Ascending,
-                    };
-                    sort_by = Some(vec![(dal::ReceiptEntityColumn::Id, order)]);
+                if let Ok(sorter) = sorter.downcast::<gtk::ColumnViewSorter>() {
+                    for position in 0..sorter.n_sort_columns() {
+                        let (column, order) = sorter.nth_sort_column(position);
+                        if let Some(column) = column {
+                            if let Some(column) =
+                                dal::ReceiptEntityColumn::from_string(column.id().unwrap().as_str())
+                            {
+                                let order = match order {
+                                    gtk::SortType::Ascending => dal::SortOrder::Ascending,
+                                    gtk::SortType::Descending => dal::SortOrder::Descending,
+                                    _ => dal::SortOrder::Ascending,
+                                };
+                                sort_by.push((column, order));
+                            }
+                        }
+                    }
                 }
             }
-            self.index_cache
-                .replace(dal::get_receipts_id(sort_by).unwrap());
+            self.index_cache.replace(
+                dal::get_receipts_id(if sort_by.len() == 0 {
+                    None
+                } else {
+                    Some(sort_by)
+                })
+                .unwrap(),
+            );
         }
     }
 
