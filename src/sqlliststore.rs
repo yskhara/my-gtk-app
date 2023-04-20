@@ -1,8 +1,14 @@
 use std::borrow::Borrow;
 
 use gtk::{
-    gio, glib, prelude::ObjectExt, subclass::prelude::ObjectSubclassIsExt, traits::SorterExt,
+    gio,
+    glib::{self, subclass, translate::IntoGlib},
+    prelude::{ObjectExt, ListModelExt, Cast},
+    subclass::prelude::ObjectSubclassIsExt,
+    traits::SorterExt,
 };
+
+use glib::translate;
 
 mod imp {
     use std::cell::RefCell;
@@ -28,34 +34,12 @@ mod imp {
     impl ObjectSubclass for SqlListStore {
         const NAME: &'static str = "MercurySqlListStore";
         type Type = super::SqlListStore;
-        type ParentType = glib::Object;
         type Interfaces = (gio::ListModel,);
     }
 
     impl SqlListStore {
-        pub fn on_sorter_changed(&self, sorter: &gtk::Sorter, _: gtk::SorterChange) {
-            println!("sorter was changed: ");
-            println!(
-                "{:?}",
-                sorter
-                    .clone()
-                    .downcast::<gtk::ColumnViewSorter>()
-                    .unwrap()
-                    .nth_sort_column(0)
-            );
-            println!(
-                "{:?}",
-                sorter
-                    .clone()
-                    .downcast::<gtk::ColumnViewSorter>()
-                    .unwrap()
-                    .nth_sort_column(1)
-            );
-            self.update_index_cache();
-            self.items_changed();
-        }
 
-        pub fn update_index_cache(&self) {
+        pub fn update_index_cache(&self) -> (u32, u32, u32) {
             let mut sort_by = vec![];
             if let Some(sorter) = self.sorter.borrow().clone() {
                 if let Ok(sorter) = sorter.downcast::<gtk::ColumnViewSorter>() {
@@ -84,6 +68,8 @@ mod imp {
                 })
                 .unwrap(),
             );
+            let len: u32 = {let c = self.index_cache.borrow(); u32::try_from(c.len()).unwrap()};
+            (0, len, len)
         }
     }
 
@@ -108,6 +94,9 @@ mod imp {
         }
 
         fn item(&self, position: u32) -> Option<glib::Object> {
+            // TODO: load several entries at once
+            // consider using "call this function the next time gtk is idle" feature.
+            // I think I saw an example of it somewhere in the SortListModel implementation.
             match dal::get_receipt(self.index_cache.borrow()[position as usize]) {
                 Ok(entity) => Some(ReceiptEntityObject::new(entity).upcast()),
                 Err(e) => {
@@ -120,8 +109,11 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct SqlListStore(ObjectSubclass<imp::SqlListStore>)
+    pub struct SqlListStore(ObjectSubclass<imp::SqlListStore>)//,subclass::basic::ClassStruct<imp::SqlListStore>>)
         @implements gio::ListModel;
+        //match fn {
+        //    type_ => || imp::SqlListStore::static_type().into_glib(),
+        //}
 }
 
 impl SqlListStore {
@@ -131,12 +123,33 @@ impl SqlListStore {
         obj
     }
 
+    pub fn on_sorter_changed(&self, sorter: &gtk::Sorter, _: gtk::SorterChange) {
+        println!("sorter was changed: ");
+        println!(
+            "{:?}",
+            sorter
+                .clone()
+                .downcast::<gtk::ColumnViewSorter>()
+                .unwrap()
+                .nth_sort_column(0)
+        );
+        println!(
+            "{:?}",
+            sorter
+                .clone()
+                .downcast::<gtk::ColumnViewSorter>()
+                .unwrap()
+                .nth_sort_column(1)
+        );
+        let (position, removed, added) = self.imp().update_index_cache();
+        self.items_changed(position, removed, added);
+    }
+
     pub fn set_sorter(&self, sorter: Option<gtk::Sorter>) {
         // FIXME: dont just unwrap; care for None.
-        let imp = self.imp();
         if let Some(sorter) = sorter.clone() {
-            sorter.connect_changed(glib::clone!(@weak imp => move |sorter, change| {
-                imp.on_sorter_changed(sorter, change)
+            sorter.connect_changed(glib::clone!(@weak self as sf => move |sorter, change| {
+                sf.on_sorter_changed(sorter, change)
             }));
         }
         self.imp().sorter.replace(sorter);

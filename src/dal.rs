@@ -191,5 +191,7 @@ pub fn get_receipts_id(
             vec.push(id)
         }
     }
+
+    println!("{:} items loaded.", vec.len());
     Ok(vec)
 }
