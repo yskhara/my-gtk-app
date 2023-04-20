@@ -1,21 +1,16 @@
-use std::borrow::Borrow;
-
 use gtk::{
     gio,
-    glib::{self, subclass, translate::IntoGlib},
-    prelude::{ObjectExt, ListModelExt, Cast},
+    glib,
+    prelude::{Cast, ListModelExt},
     subclass::prelude::ObjectSubclassIsExt,
     traits::SorterExt,
 };
-
-use glib::translate;
 
 mod imp {
     use std::cell::RefCell;
 
     use crate::dal;
     use crate::receiptlistitem::ReceiptEntityObject;
-    use glib::{BindingFlags, ParamSpec, Properties, Value};
     use gtk::prelude::*;
     use gtk::subclass::prelude::*;
     use gtk::{gio, glib};
@@ -27,8 +22,6 @@ mod imp {
         pub sorter: RefCell<Option<gtk::Sorter>>,
     }
 
-    pub struct SqlListStoreClass {}
-
     // The central trait for subclassing a GObject
     #[glib::object_subclass]
     impl ObjectSubclass for SqlListStore {
@@ -38,7 +31,6 @@ mod imp {
     }
 
     impl SqlListStore {
-
         pub fn update_index_cache(&self) -> (u32, u32, u32) {
             let mut sort_by = vec![];
             if let Some(sorter) = self.sorter.borrow().clone() {
@@ -68,7 +60,10 @@ mod imp {
                 })
                 .unwrap(),
             );
-            let len: u32 = {let c = self.index_cache.borrow(); u32::try_from(c.len()).unwrap()};
+            let len: u32 = {
+                let c = self.index_cache.borrow();
+                u32::try_from(c.len()).unwrap()
+            };
             (0, len, len)
         }
     }

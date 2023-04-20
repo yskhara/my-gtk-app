@@ -64,7 +64,7 @@ static CONNECTION: Lazy<Mutex<Connection>> = Lazy::new(|| {
 pub fn get_receipts() -> Vec<ReceiptEntity> {
     //let connection = sqlite::open(":memory:").unwrap();
 
-    let query = "
+    let _query = "
     CREATE TABLE Purchase (ReceiptId INTEGER, Id INTEGER, Description TEXT, UnitPrice REAL, Count INTEGER, TaxRate REAL, TaxExcluded BOOL, Usage INTEGER, PRIMARY KEY(ReceiptId, Id));
     INSERT INTO  Purchase (ReceiptId, Id, Description, UnitPrice, Count, TaxRate, TaxExcluded, Usage) VALUES (1001, 1, 'Item 001', 85, 1, 0.08, 0, 1);
     INSERT INTO  Purchase (ReceiptId, Id, Description, UnitPrice, Count, TaxRate, TaxExcluded, Usage) VALUES (1002, 1, 'Item 002', 2280, 1, 0.08, 1, 2);

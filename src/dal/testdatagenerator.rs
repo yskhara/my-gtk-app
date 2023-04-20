@@ -1,4 +1,4 @@
-use rand::{distributions::Uniform, prelude::Distribution, Rng};
+use rand::{distributions::Uniform, prelude::Distribution};
 
 use super::*;
 

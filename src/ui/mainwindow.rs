@@ -1,17 +1,14 @@
-use std::cell::Cell;
-
 use chrono::{DateTime, NaiveDateTime, Utc};
 use glib::subclass::InitializingObject;
 use gtk::subclass::prelude::*;
 use gtk::{
-    gio, glib, prelude::*, Button, ColumnView, ColumnViewColumn, CompositeTemplate, Label,
+    gio, glib, prelude::*, Button, ColumnView, CompositeTemplate, Label,
     SignalListItemFactory, SingleSelection,
 };
 
-use super::ReceiptEditWindow;
 use crate::entities::ReceiptEntity;
 use crate::receiptlistitem::ReceiptEntityObject;
-use crate::{dal, entities};
+use crate::dal;
 
 use crate::sqlliststore::SqlListStore;
 
@@ -181,7 +178,7 @@ impl MainWindow {
     }
 
     #[template_callback]
-    async fn button_add_entry_click_handler(&self, button: &gtk::Button) {
+    async fn button_add_entry_click_handler(&self, _button: &gtk::Button) {
         static MUTEX: once_cell::sync::Lazy<std::sync::Arc<std::sync::Mutex<i32>>> =
             once_cell::sync::Lazy::new(|| std::sync::Arc::new(std::sync::Mutex::new(1)));
         println!("Obtaining a mutex lock...");
