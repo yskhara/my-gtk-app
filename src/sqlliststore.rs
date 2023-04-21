@@ -92,6 +92,7 @@ mod imp {
             // TODO: load several entries at once
             // consider using "call this function the next time gtk is idle" feature.
             // I think I saw an example of it somewhere in the SortListModel implementation.
+            println!("item requested");
             match dal::get_receipt(self.index_cache.borrow()[position as usize]) {
                 Ok(entity) => Some(ReceiptEntityObject::new(entity).upcast()),
                 Err(e) => {

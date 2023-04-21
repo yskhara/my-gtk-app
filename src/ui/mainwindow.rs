@@ -3,7 +3,7 @@ use glib::subclass::InitializingObject;
 use gtk::subclass::prelude::*;
 use gtk::{
     gio, glib, prelude::*, Button, ColumnView, CompositeTemplate, Label,
-    SignalListItemFactory, SingleSelection,
+    SignalListItemFactory, SingleSelection, NoSelection,
 };
 
 use crate::entities::ReceiptEntity;
@@ -80,8 +80,9 @@ impl ObjectImpl for MainWindow {
             model.is::<gio::ListModel>()
         );
         //let model = gtk::SortListModel::new(Some(model), Some(sorter.clone()));
-        let selection_model = SingleSelection::new(Some(model));
-        self.receipt_list_view.set_model(Some(&selection_model));
+        //let model = SingleSelection::new(Some(model));
+        let model = NoSelection::new(Some(model));
+        self.receipt_list_view.set_model(Some(&model));
 
         let sorter = gtk::NumericSorter::new(Some(gtk::PropertyExpression::new(
             ReceiptEntityObject::static_type(),

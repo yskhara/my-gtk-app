@@ -1,6 +1,6 @@
 pub mod testdatagenerator;
 
-use std::sync::Mutex;
+use std::{sync::Mutex, time::Instant};
 
 use crate::entities::ReceiptEntity;
 use once_cell::sync::Lazy;
@@ -120,6 +120,7 @@ pub fn add_receipt() {
 }
 
 pub fn get_receipt_count() -> u32 {
+    let start = Instant::now();
     let query = "SELECT COUNT(id) from receipt;";
     match CONNECTION
         .lock()
@@ -127,7 +128,7 @@ pub fn get_receipt_count() -> u32 {
         .query_row(query, [], |row| row.get::<usize, u32>(0))
     {
         Ok(data) => {
-            println!("{:}", data);
+            println!("got receipt count: {:}; took {:?}.", data, start.elapsed());
             data
         }
         Err(err) => {
