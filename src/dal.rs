@@ -138,13 +138,13 @@ pub fn get_receipt_count() -> u32 {
     }
 }
 
-pub fn get_receipt(position: u32) -> Result<ReceiptEntity, rusqlite::Error> {
+pub fn get_receipt(receipt_id: u32) -> Result<ReceiptEntity, rusqlite::Error> {
     let query = "SELECT * FROM receipt WHERE id=?1;";
 
     CONNECTION
         .lock()
         .unwrap()
-        .query_row(query, [position], |row| {
+        .query_row(query, [receipt_id], |row| {
             let id = row.get::<&str, u32>("id")?;
             let datetime = row.get::<&str, i64>("datetime")?;
             let store_key = row.get::<&str, u32>("store_key")?;

@@ -1,4 +1,4 @@
-use glib::{Object, ParamSpec, ParamSpecUInt, ParamSpecInt64, Value};
+use glib::{Object, ParamSpec, ParamSpecInt64, ParamSpecUInt, Value};
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
@@ -23,31 +23,54 @@ mod imp {
         type Type = super::ReceiptEntityObject;
     }
 
+    impl ReceiptEntityObject {
+        pub fn set_entity(&self, entity: ReceiptEntity) {
+            self.entity.replace(entity);
+        }
+    }
+
     // Trait shared by all GObjects
     impl ObjectImpl for ReceiptEntityObject {
         fn properties() -> &'static [ParamSpec] {
-            static PROPERTIES: Lazy<Vec<ParamSpec>> =
-                Lazy::new(|| 
-                    vec![
-                        ParamSpecUInt::builder("id").build(),
-                        ParamSpecInt64::builder("datetime").build(),
-                        ParamSpecUInt::builder("storekey").build(),
-                        ParamSpecUInt::builder("currencyid").build(),
-                        ParamSpecUInt::builder("paidamount").build(),
-                        ParamSpecUInt::builder("paymentmethodkey").build(),
-                    ]
-                );
+            static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
+                vec![
+                    ParamSpecUInt::builder("id").build(),
+                    ParamSpecInt64::builder("datetime").build(),
+                    ParamSpecUInt::builder("storekey").build(),
+                    ParamSpecUInt::builder("currencyid").build(),
+                    ParamSpecUInt::builder("paidamount").build(),
+                    ParamSpecUInt::builder("paymentmethodkey").build(),
+                ]
+            });
             PROPERTIES.as_ref()
         }
 
         fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
-                "id" => self.entity.borrow_mut().id = value.get().expect("The value needs to be of type `u32`."),
-                "datetime" => self.entity.borrow_mut().datetime = value.get().expect("The value needs to be of type `i64`."),
-                "storekey" => self.entity.borrow_mut().store_key = value.get().expect("The value needs to be of type `u32`."),
-                "currencyid" => self.entity.borrow_mut().currency_id = value.get().expect("The value needs to be of type `u32`."),
-                "paidamount" => self.entity.borrow_mut().paid_amount = value.get().expect("The value needs to be of type `u32`."),
-                "paymentmethodkey" => self.entity.borrow_mut().payment_method_key = value.get().expect("The value needs to be of type `u32`."),
+                "id" => {
+                    self.entity.borrow_mut().id =
+                        value.get().expect("The value needs to be of type `u32`.")
+                }
+                "datetime" => {
+                    self.entity.borrow_mut().datetime =
+                        value.get().expect("The value needs to be of type `i64`.")
+                }
+                "storekey" => {
+                    self.entity.borrow_mut().store_key =
+                        value.get().expect("The value needs to be of type `u32`.")
+                }
+                "currencyid" => {
+                    self.entity.borrow_mut().currency_id =
+                        value.get().expect("The value needs to be of type `u32`.")
+                }
+                "paidamount" => {
+                    self.entity.borrow_mut().paid_amount =
+                        value.get().expect("The value needs to be of type `u32`.")
+                }
+                "paymentmethodkey" => {
+                    self.entity.borrow_mut().payment_method_key =
+                        value.get().expect("The value needs to be of type `u32`.")
+                }
                 _ => unimplemented!(),
             }
         }
@@ -72,13 +95,8 @@ glib::wrapper! {
 
 impl ReceiptEntityObject {
     pub fn new(entity: ReceiptEntity) -> Self {
-        Object::builder()
-        .property("id", entity.id)
-        .property("datetime", entity.datetime)
-        .property("storekey", entity.store_key)
-        .property("currencyid", entity.currency_id)
-        .property("paidamount", entity.paid_amount)
-        .property("paymentmethodkey", entity.payment_method_key)
-        .build()
+        let obj: Self = Object::builder().build();
+        obj.imp().set_entity(entity);
+        obj
     }
 }

@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use chrono::{DateTime, NaiveDateTime, Utc};
 use glib::subclass::InitializingObject;
 use gtk::subclass::prelude::*;
@@ -66,20 +68,26 @@ impl ObjectImpl for MainWindow {
         let col2 = gtk::ColumnViewColumn::new(Some("Date"), Some(col2factory));
 
         // Create new model
-        //let model = gio::ListStore::new(ReceiptEntityObject::static_type());
-        //model.append(&ReceiptEntityObject::new(dal::get_receipt(1).unwrap()));
-        //model.append(&ReceiptEntityObject::new(dal::get_receipt(2).unwrap()));
+        let model = gio::ListStore::new(ReceiptEntityObject::static_type());
+        
+        let start = Instant::now();
+        let receipt_id = dal::get_receipts_id(None).unwrap();
+        let cnt = receipt_id.len();
+        for i in receipt_id {
+            model.append(&ReceiptEntityObject::new(dal::get_receipt(i).unwrap()));
+        }
+        println!("Collected {:} receipts; Took {:?}.", cnt, start.elapsed());
 
         let sorter = self.receipt_list_view.sorter().unwrap();
 
-        let model = SqlListStore::new(Some(sorter.clone()));
+        //let model = SqlListStore::new(Some(sorter.clone()));
         //let model = SqlListStore::new(None);
         println!("{:?}", model);
         println!(
             "is \"model\" a gio::ListModel? : {:?}",
             model.is::<gio::ListModel>()
         );
-        //let model = gtk::SortListModel::new(Some(model), Some(sorter.clone()));
+        let model = gtk::SortListModel::new(Some(model), Some(sorter.clone()));
         //let model = SingleSelection::new(Some(model));
         let model = NoSelection::new(Some(model));
         self.receipt_list_view.set_model(Some(&model));
