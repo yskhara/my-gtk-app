@@ -8,8 +8,10 @@ use gtk::{
 
 mod imp {
     use std::cell::RefCell;
+    use std::collections::HashMap;
 
     use crate::dal;
+    use crate::entities::ReceiptEntity;
     use crate::receiptlistitem::ReceiptEntityObject;
     use gtk::prelude::*;
     use gtk::subclass::prelude::*;
@@ -19,6 +21,7 @@ mod imp {
     #[derive(Default)]
     pub struct SqlListStore {
         index_cache: RefCell<Vec<u32>>,
+        object_cache: RefCell<HashMap<u32, ReceiptEntityObject>>,
         pub sorter: RefCell<Option<gtk::Sorter>>,
     }
 
@@ -74,6 +77,15 @@ mod imp {
             // Call "constructed" on parent
             self.parent_constructed();
 
+            let id_list = dal::get_receipts_id(None).unwrap();
+            let mut map = HashMap::with_capacity(id_list.len());
+            for id in id_list {
+                map.entry(id).or_insert(ReceiptEntityObject::new(ReceiptEntity::default()));
+            }
+            
+            self.object_cache.replace(map);
+
+
             self.update_index_cache();
         }
     }
@@ -92,9 +104,15 @@ mod imp {
             // TODO: load several entries at once
             // consider using "call this function the next time gtk is idle" feature.
             // I think I saw an example of it somewhere in the SortListModel implementation.
-            println!("item requested");
+            //println!("item requested");
+            //
+            // FIXME: DO NOT call ReceiptEntityObject::new() in this method!!! It is too expensive!
+            //
             match dal::get_receipt(self.index_cache.borrow()[position as usize]) {
-                Ok(entity) => Some(ReceiptEntityObject::new(entity).upcast()),
+                Ok(entity) => {
+                    self.object_cache
+                    Some(ReceiptEntityObject::new(entity).upcast())
+                },
                 Err(e) => {
                     println!("{:?}", e);
                     None
