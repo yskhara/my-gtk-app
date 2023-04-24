@@ -1,6 +1,5 @@
 use gtk::{
-    gio,
-    glib,
+    gio, glib,
     prelude::{Cast, ListModelExt},
     subclass::prelude::ObjectSubclassIsExt,
     traits::SorterExt,
@@ -9,8 +8,9 @@ use gtk::{
 mod imp {
     use std::cell::RefCell;
     use std::collections::HashMap;
+    use std::time::Instant;
 
-    use crate::dal;
+    use crate::dal::{self, ReceiptEntityColumn};
     use crate::entities::ReceiptEntity;
     use crate::receiptlistitem::ReceiptEntityObject;
     use gtk::prelude::*;
@@ -20,8 +20,9 @@ mod imp {
     // Object holding the state
     #[derive(Default)]
     pub struct SqlListStore {
-        index_cache: RefCell<Vec<u32>>,
-        object_cache: RefCell<HashMap<u32, ReceiptEntityObject>>,
+        //index_cache: RefCell<Vec<u32>>,
+        //object_cache: RefCell<HashMap<u32, ReceiptEntityObject>>,
+        object_cache: RefCell<Vec<u32>>,
         pub sorter: RefCell<Option<gtk::Sorter>>,
     }
 
@@ -34,7 +35,7 @@ mod imp {
     }
 
     impl SqlListStore {
-        pub fn update_index_cache(&self) -> (u32, u32, u32) {
+        fn get_sort_by(&self) -> Vec<(dal::ReceiptEntityColumn, dal::SortOrder)> {
             let mut sort_by = vec![];
             if let Some(sorter) = self.sorter.borrow().clone() {
                 if let Ok(sorter) = sorter.downcast::<gtk::ColumnViewSorter>() {
@@ -55,6 +56,11 @@ mod imp {
                     }
                 }
             }
+            sort_by
+        }
+
+        pub fn update_index_cache(&self) -> (u32, u32, u32) {
+            let sort_by = self.get_sort_by();
             self.index_cache.replace(
                 dal::get_receipts_id(if sort_by.len() == 0 {
                     None
@@ -69,6 +75,12 @@ mod imp {
             };
             (0, len, len)
         }
+
+        fn update_items(&self) {
+            if let Ok(entities) = dal::get_receipts(Some(self.get_sort_by())) {
+                
+            }
+        }
     }
 
     // Trait shared by all GObjects
@@ -77,14 +89,14 @@ mod imp {
             // Call "constructed" on parent
             self.parent_constructed();
 
+            // initialize object cache
             let id_list = dal::get_receipts_id(None).unwrap();
             let mut map = HashMap::with_capacity(id_list.len());
             for id in id_list {
-                map.entry(id).or_insert(ReceiptEntityObject::new(ReceiptEntity::default()));
+                map.entry(id)
+                    .or_insert(ReceiptEntityObject::new(ReceiptEntity::default()));
             }
-            
             self.object_cache.replace(map);
-
 
             self.update_index_cache();
         }
@@ -101,23 +113,20 @@ mod imp {
         }
 
         fn item(&self, position: u32) -> Option<glib::Object> {
-            // TODO: load several entries at once
-            // consider using "call this function the next time gtk is idle" feature.
-            // I think I saw an example of it somewhere in the SortListModel implementation.
-            //println!("item requested");
-            //
-            // FIXME: DO NOT call ReceiptEntityObject::new() in this method!!! It is too expensive!
-            //
-            match dal::get_receipt(self.index_cache.borrow()[position as usize]) {
+            //let start = Instant::now();
+            let receipt_id = self.index_cache.borrow()[position as usize];
+            /*let res = match dal::get_receipt(receipt_id) {
                 Ok(entity) => {
-                    self.object_cache
-                    Some(ReceiptEntityObject::new(entity).upcast())
-                },
+                    self.object_cache.borrow_mut().entry(receipt_id).and_modify(|obj| {obj.clone().set_entity(entity);}); // without thisline sorting all 100_000 items takes ~2sec.
+                }
                 Err(e) => {
                     println!("{:?}", e);
-                    None
+                    //None
                 }
-            }
+            };*/
+            //println!("item() called: position: {:}; took {:?}.", position, start.elapsed());
+            //res
+            Some(self.object_cache.borrow()[&receipt_id].clone().upcast())
         }
     }
 }

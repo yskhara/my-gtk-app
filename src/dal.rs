@@ -61,7 +61,7 @@ static CONNECTION: Lazy<Mutex<Connection>> = Lazy::new(|| {
     Mutex::new(Connection::open_in_memory().unwrap())
 });
 
-pub fn get_receipts() -> Vec<ReceiptEntity> {
+pub fn _get_receipts() -> Vec<ReceiptEntity> {
     //let connection = sqlite::open(":memory:").unwrap();
 
     let _query = "
@@ -168,12 +168,14 @@ pub fn get_receipts_id(
     let mut query = std::string::String::from("SELECT id FROM receipt");
 
     if let Some(vec) = sort_by {
-        query += " ORDER BY";
-        for i in 0..vec.len() {
-            let (column, order) = &vec[i];
-            query += &format!(" {} {}", column.to_string(), order.to_string());
-            if i < vec.len() - 1 {
-                query += &",";
+        if vec.len() > 0 {
+            query += " ORDER BY";
+            for i in 0..vec.len() {
+                let (column, order) = &vec[i];
+                query += &format!(" {} {}", column.to_string(), order.to_string());
+                if i < vec.len() - 1 {
+                    query += &",";
+                }
             }
         }
     }
@@ -190,6 +192,48 @@ pub fn get_receipts_id(
     {
         if let Ok(id) = id {
             vec.push(id)
+        }
+    }
+
+    println!("{:} items loaded.", vec.len());
+    Ok(vec)
+}
+
+pub fn get_receipts(
+    sort_by: Option<Vec<(ReceiptEntityColumn, SortOrder)>>,
+) -> Result<Vec<ReceiptEntity>, Box<dyn std::error::Error>> {
+    let mut query = std::string::String::from("SELECT * FROM receipt");
+
+    if let Some(vec) = sort_by {
+        query += " ORDER BY";
+        for i in 0..vec.len() {
+            let (column, order) = &vec[i];
+            query += &format!(" {} {}", column.to_string(), order.to_string());
+            if i < vec.len() - 1 {
+                query += &",";
+            }
+        }
+    }
+
+    query += ";";
+
+    println!("{:}", query);
+
+    let mut vec = vec![];
+    for entity in CONNECTION.lock()?.prepare(&query)?.query_map([], |row| {
+        let e = ReceiptEntity {
+            id: row.get(0).unwrap(),
+            datetime: row.get(1).unwrap(),
+            store_key: 0,
+            currency_id: 0,
+            paid_amount: 0,
+            payment_method_key: 0,
+        };
+        //println!("{:#?}", &e);
+        Ok(e)
+    })? {
+        if let Ok(entity) = entity {
+            vec.push(entity)
         }
     }
 

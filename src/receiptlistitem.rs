@@ -13,7 +13,7 @@ mod imp {
     // Object holding the state
     #[derive(Default)]
     pub struct ReceiptEntityObject {
-        entity: Arc<RefCell<ReceiptEntity>>,
+        entity: Rc<RefCell<ReceiptEntity>>,
     }
 
     // The central trait for subclassing a GObject
@@ -98,5 +98,9 @@ impl ReceiptEntityObject {
         let obj: Self = Object::builder().build();
         obj.imp().set_entity(entity);
         obj
+    }
+
+    pub fn set_entity(self, entity: ReceiptEntity) {
+        self.imp().set_entity(entity);
     }
 }
