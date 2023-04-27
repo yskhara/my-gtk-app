@@ -200,7 +200,9 @@ pub fn get_receipts_id(
 }
 
 pub fn get_receipts(
-    sort_by: Option<Vec<(ReceiptEntityColumn, SortOrder)>>,
+    row_count: Option<u32>,
+    offset: Option<u32>,
+    sort_by: &Option<Vec<(ReceiptEntityColumn, SortOrder)>>,
 ) -> Result<Vec<ReceiptEntity>, Box<dyn std::error::Error>> {
     let mut query = std::string::String::from("SELECT * FROM receipt");
 
@@ -213,6 +215,14 @@ pub fn get_receipts(
                 query += &",";
             }
         }
+    }
+
+    if let Some(row_count) = row_count {
+        query += " LIMIT";
+        if let Some(offset) = offset {
+            query += &format!(" {},", offset.to_string());
+        }
+        query += &format!(" {}", row_count.to_string());
     }
 
     query += ";";

@@ -22,8 +22,10 @@ mod imp {
     pub struct SqlListStore {
         //index_cache: RefCell<Vec<u32>>,
         //object_cache: RefCell<HashMap<u32, ReceiptEntityObject>>,
-        object_cache: RefCell<Vec<u32>>,
+        object_cache: RefCell<Vec<ReceiptEntityObject>>,
         pub sorter: RefCell<Option<gtk::Sorter>>,
+        sort_by: RefCell<Option<Vec<(dal::ReceiptEntityColumn, dal::SortOrder)>>>,
+        pub parent_items_changed: RefCell<Option<Box<dyn Fn(u32, u32, u32)>>>,
     }
 
     // The central trait for subclassing a GObject
@@ -35,7 +37,10 @@ mod imp {
     }
 
     impl SqlListStore {
-        fn get_sort_by(&self) -> Vec<(dal::ReceiptEntityColumn, dal::SortOrder)> {
+        const DEFAULT_FETCH_LENGTH: u32 = 100;
+        const DEFAULT_FETCH_MARGIN: u32 = 10;
+
+        fn update_sort_by(&self) {
             let mut sort_by = vec![];
             if let Some(sorter) = self.sorter.borrow().clone() {
                 if let Ok(sorter) = sorter.downcast::<gtk::ColumnViewSorter>() {
@@ -56,29 +61,37 @@ mod imp {
                     }
                 }
             }
-            sort_by
+            if sort_by.len() == 0 {
+                self.sort_by.replace(None);
+            } else {
+                self.sort_by.replace(Some(sort_by));
+            }
         }
 
-        pub fn update_index_cache(&self) -> (u32, u32, u32) {
-            let sort_by = self.get_sort_by();
-            self.index_cache.replace(
-                dal::get_receipts_id(if sort_by.len() == 0 {
-                    None
-                } else {
-                    Some(sort_by)
-                })
-                .unwrap(),
-            );
-            let len: u32 = {
-                let c = self.index_cache.borrow();
-                u32::try_from(c.len()).unwrap()
-            };
-            (0, len, len)
+        pub fn on_sorter_changed(&self) -> (u32, u32, u32) {
+            self.update_sort_by();
+            let removed = u32::try_from(self.object_cache.borrow().len()).unwrap();
+            self.object_cache.replace(vec![]);
+            let added = u32::try_from(self.fetch_items()).unwrap();
+            // positon, removed, added
+            (0, removed, added)
         }
 
-        fn update_items(&self) {
-            if let Ok(entities) = dal::get_receipts(Some(self.get_sort_by())) {
-                
+        fn fetch_items(&self) -> u32 {
+            if let Ok(entities) = dal::get_receipts(
+                Some(Self::DEFAULT_FETCH_LENGTH),
+                Some(self.n_items()),
+                &self.sort_by.borrow(),
+            ) {
+                let added = entities.len();
+                for entity in entities {
+                    self.object_cache
+                        .borrow_mut()
+                        .push(ReceiptEntityObject::new(entity));
+                }
+                added.try_into().unwrap()
+            } else {
+                0
             }
         }
     }
@@ -89,16 +102,15 @@ mod imp {
             // Call "constructed" on parent
             self.parent_constructed();
 
-            // initialize object cache
-            let id_list = dal::get_receipts_id(None).unwrap();
-            let mut map = HashMap::with_capacity(id_list.len());
-            for id in id_list {
-                map.entry(id)
-                    .or_insert(ReceiptEntityObject::new(ReceiptEntity::default()));
-            }
-            self.object_cache.replace(map);
-
-            self.update_index_cache();
+            // initialize object cache with empty objects
+            // let id_list = dal::get_receipts_id(None).unwrap();
+            // let mut vec = Vec::new();
+            // for index in 0..Self::DEFAULT_FETCH_LENGTH {
+            //     vec.push(ReceiptEntityObject::new(ReceiptEntity::default()));
+            // }
+            self.object_cache.replace(vec![]);
+            self.update_sort_by();
+            self.fetch_items();
         }
     }
 
@@ -109,24 +121,27 @@ mod imp {
         }
 
         fn n_items(&self) -> u32 {
-            dal::get_receipt_count()
+            self.object_cache.borrow().len().try_into().unwrap()
         }
 
         fn item(&self, position: u32) -> Option<glib::Object> {
-            //let start = Instant::now();
-            let receipt_id = self.index_cache.borrow()[position as usize];
-            /*let res = match dal::get_receipt(receipt_id) {
-                Ok(entity) => {
-                    self.object_cache.borrow_mut().entry(receipt_id).and_modify(|obj| {obj.clone().set_entity(entity);}); // without thisline sorting all 100_000 items takes ~2sec.
-                }
-                Err(e) => {
-                    println!("{:?}", e);
-                    //None
-                }
-            };*/
-            //println!("item() called: position: {:}; took {:?}.", position, start.elapsed());
-            //res
-            Some(self.object_cache.borrow()[&receipt_id].clone().upcast())
+            if position >= (self.n_items() - Self::DEFAULT_FETCH_MARGIN) {
+                // FIXME: do not fetch more when a fetch is already scheduled.
+                println!("fetching more...");
+                glib::source::idle_add_local_once(glib::clone!(@weak self as sf => move || {
+                    let pos = sf.n_items();
+                    let added = sf.fetch_items();
+                    if let Some(f) = sf.parent_items_changed.borrow().as_deref() {
+                        f(pos, 0, added);
+                    };
+                }));
+            }
+
+            Some(
+                self.object_cache.borrow()[position as usize]
+                    .clone()
+                    .upcast(),
+            )
         }
     }
 }
@@ -143,6 +158,13 @@ impl SqlListStore {
     pub fn new(sorter: Option<gtk::Sorter>) -> Self {
         let obj: Self = glib::Object::builder().build();
         obj.set_sorter(sorter);
+        obj.imp()
+            .parent_items_changed
+            .replace(Some(std::boxed::Box::new(
+                glib::clone!(@weak obj as obj => move |position, removed, added| {
+                    obj.items_changed(position, removed, added);
+                }),
+            )));
         obj
     }
 
@@ -164,7 +186,8 @@ impl SqlListStore {
                 .unwrap()
                 .nth_sort_column(1)
         );
-        let (position, removed, added) = self.imp().update_index_cache();
+
+        let (position, removed, added) = self.imp().on_sorter_changed();
         self.items_changed(position, removed, added);
     }
 

@@ -157,31 +157,31 @@ impl MainWindow {
     }
 
     fn update_receipt_list(&self) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-        let model = self.get_liststore().unwrap();
+        // let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        // let model = self.get_liststore().unwrap();
 
-        std::thread::spawn(move || {
-            let vector = dal::get_receipts();
-            for entity in vector {
-                let _ = sender.send(Ok(entity));
-            }
-            println!("All messages sent.");
-        });
-        model.remove_all();
+        // std::thread::spawn(move || {
+        //     let vector = dal::get_receipts(None);
+        //     for entity in vector {
+        //         let _ = sender.send(Ok(entity));
+        //     }
+        //     println!("All messages sent.");
+        // });
+        // model.remove_all();
 
-        let model = model.clone();
-        receiver.attach(None, move |obj: Result<ReceiptEntity, ()>| {
-            if let Ok(entity) = obj {
-                // Add the vector to the model
-                //println!("Message received: {:?}", entity);
-                model.append(&ReceiptEntityObject::new(entity));
-                //let list_view = ListView::new(Some(selection_model), Some(factory));
-                Continue(true)
-            } else {
-                println!("All messages received.");
-                Continue(false)
-            }
-        });
+        // let model = model.clone();
+        // receiver.attach(None, move |obj: Result<ReceiptEntity, ()>| {
+        //     if let Ok(entity) = obj {
+        //         // Add the vector to the model
+        //         //println!("Message received: {:?}", entity);
+        //         model.append(&ReceiptEntityObject::new(entity));
+        //         //let list_view = ListView::new(Some(selection_model), Some(factory));
+        //         Continue(true)
+        //     } else {
+        //         println!("All messages received.");
+        //         Continue(false)
+        //     }
+        // });
     }
 
     #[template_callback]
