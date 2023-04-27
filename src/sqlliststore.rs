@@ -26,6 +26,7 @@ mod imp {
         pub sorter: RefCell<Option<gtk::Sorter>>,
         sort_by: RefCell<Option<Vec<(dal::ReceiptEntityColumn, dal::SortOrder)>>>,
         pub parent_items_changed: RefCell<Option<Box<dyn Fn(u32, u32, u32)>>>,
+        fetching_more: RefCell<bool>,
     }
 
     // The central trait for subclassing a GObject
@@ -70,6 +71,7 @@ mod imp {
 
         pub fn on_sorter_changed(&self) -> (u32, u32, u32) {
             self.update_sort_by();
+            // TODO: do not fetch here; just remove all items and report (0, <n_items()>, 0).
             let removed = u32::try_from(self.object_cache.borrow().len()).unwrap();
             self.object_cache.replace(vec![]);
             let added = u32::try_from(self.fetch_items()).unwrap();
@@ -121,20 +123,26 @@ mod imp {
         }
 
         fn n_items(&self) -> u32 {
-            self.object_cache.borrow().len().try_into().unwrap()
+            TryInto::<u32>::try_into(self.object_cache.borrow().len()).unwrap()
         }
 
         fn item(&self, position: u32) -> Option<glib::Object> {
             if position >= (self.n_items() - Self::DEFAULT_FETCH_MARGIN) {
                 // FIXME: do not fetch more when a fetch is already scheduled.
-                println!("fetching more...");
-                glib::source::idle_add_local_once(glib::clone!(@weak self as sf => move || {
-                    let pos = sf.n_items();
-                    let added = sf.fetch_items();
-                    if let Some(f) = sf.parent_items_changed.borrow().as_deref() {
-                        f(pos, 0, added);
-                    };
-                }));
+                // FIXME: 
+                if !(*self.fetching_more.borrow()) {
+                    self.fetching_more.replace(true);
+                    println!("fetching more...");
+                    glib::source::idle_add_local_once(glib::clone!(@weak self as sf => move || {
+                        let pos = sf.n_items();
+                        let added = sf.fetch_items();
+                        sf.fetching_more.replace(false);
+                        if let Some(f) = sf.parent_items_changed.borrow().as_deref() {
+                            f(pos, 0, added);
+                        };
+                        println!("fetching complete. fetching: {:}", *sf.fetching_more.borrow());
+                    }));
+                }
             }
 
             Some(
@@ -161,7 +169,7 @@ impl SqlListStore {
         obj.imp()
             .parent_items_changed
             .replace(Some(std::boxed::Box::new(
-                glib::clone!(@weak obj as obj => move |position, removed, added| {
+                glib::clone!(@weak obj => move |position, removed, added| {
                     obj.items_changed(position, removed, added);
                 }),
             )));
