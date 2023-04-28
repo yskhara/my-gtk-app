@@ -123,7 +123,9 @@ mod imp {
         }
 
         fn n_items(&self) -> u32 {
-            TryInto::<u32>::try_into(self.object_cache.borrow().len()).unwrap()
+            let r = TryInto::<u32>::try_into(self.object_cache.borrow().len()).unwrap();
+            println!("n_items: {:}", r);
+            r
         }
 
         fn item(&self, position: u32) -> Option<glib::Object> {
@@ -137,13 +139,15 @@ mod imp {
                         let pos = sf.n_items();
                         let added = sf.fetch_items();
                         sf.fetching_more.replace(false);
+                        println!("fetching complete. {:?}", (pos, 0, added));
                         if let Some(f) = sf.parent_items_changed.borrow().as_deref() {
                             f(pos, 0, added);
                         };
-                        println!("fetching complete. fetching: {:}", *sf.fetching_more.borrow());
                     }));
                 }
             }
+
+            println!("item requested for pos: {:}", position);
 
             Some(
                 self.object_cache.borrow()[position as usize]
