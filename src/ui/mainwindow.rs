@@ -8,7 +8,7 @@ use gtk::{
     SignalListItemFactory, SingleSelection, NoSelection,
 };
 
-use crate::entities::ReceiptEntity;
+use crate::entities::{ReceiptEntity, self};
 use crate::receiptlistitem::ReceiptEntityObject;
 use crate::dal;
 
@@ -79,32 +79,23 @@ impl ObjectImpl for MainWindow {
         //let model = gtk::SortListModel::new(Some(model), Some(sorter.clone()));
 
         let sorter = self.receipt_list_view.sorter().unwrap();
-        let model = SqlListStore::new(Some(sorter.clone()));
+        let model = SqlListStore::new("receipt", ReceiptEntityObject::static_type(), Some(sorter.clone()));
         //let model = SqlListStore::new(None);
         println!("{:?}", model);
         println!(
             "is \"model\" a gio::ListModel? : {:?}",
             model.is::<gio::ListModel>()
         );
-        //let model = SingleSelection::new(Some(model));
-        let model = NoSelection::new(Some(model));
+        let model = SingleSelection::new(Some(model));
+        //let model = NoSelection::new(Some(model));
         self.receipt_list_view.set_model(Some(&model));
 
-        let sorter = gtk::NumericSorter::new(Some(gtk::PropertyExpression::new(
-            ReceiptEntityObject::static_type(),
-            None::<gtk::Expression>,
-            // Some(gtk::PropertyExpression::new(
-            //     gtk::ListItem::static_type(),
-            //     None::<gtk::Expression>,
-            //     "item",
-            // )),
-            "id",
-        )));
-
+        let sorter = gtk::NumericSorter::new(None::<gtk::Expression>);
+        
         col1.set_sorter(Some(&sorter));
-        col1.set_id(Some(dal::ReceiptEntityColumn::Id.to_string()));
+        col1.set_id(Some(entities::ReceiptEntityColumn::Id.to_string()));
         col2.set_sorter(Some(&sorter));
-        col2.set_id(Some(dal::ReceiptEntityColumn::Datetime.to_string()));
+        col2.set_id(Some(entities::ReceiptEntityColumn::Datetime.to_string()));
 
         self.receipt_list_view.append_column(&col1);
         self.receipt_list_view.append_column(&col2);
@@ -128,11 +119,6 @@ impl ObjectImpl for MainWindow {
             .connect_activate(move |_receipt_item_view, pos| {
                 println!("{}", pos);
             });
-
-
-        //self.update_receipt_list();
-
-        //dal::get_receipt_count();
     }
 }
 // ANCHOR_END: object_impl
@@ -156,34 +142,6 @@ impl MainWindow {
         }
     }
 
-    fn update_receipt_list(&self) {
-        // let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-        // let model = self.get_liststore().unwrap();
-
-        // std::thread::spawn(move || {
-        //     let vector = dal::get_receipts(None);
-        //     for entity in vector {
-        //         let _ = sender.send(Ok(entity));
-        //     }
-        //     println!("All messages sent.");
-        // });
-        // model.remove_all();
-
-        // let model = model.clone();
-        // receiver.attach(None, move |obj: Result<ReceiptEntity, ()>| {
-        //     if let Ok(entity) = obj {
-        //         // Add the vector to the model
-        //         //println!("Message received: {:?}", entity);
-        //         model.append(&ReceiptEntityObject::new(entity));
-        //         //let list_view = ListView::new(Some(selection_model), Some(factory));
-        //         Continue(true)
-        //     } else {
-        //         println!("All messages received.");
-        //         Continue(false)
-        //     }
-        // });
-    }
-
     #[template_callback]
     async fn button_add_entry_click_handler(&self, _button: &gtk::Button) {
         static MUTEX: once_cell::sync::Lazy<std::sync::Arc<std::sync::Mutex<i32>>> =
@@ -204,7 +162,6 @@ impl MainWindow {
             println!("Done. Releasing the lock.");
 
             dal::add_receipt();
-            self.update_receipt_list();
         } else {
             println!("Failed to obtain a lock. Returning...")
         }

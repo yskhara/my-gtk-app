@@ -1,21 +1,21 @@
 use gtk::{
     gio, glib,
-    prelude::{Cast, ListModelExt},
+    prelude::{ListModelExt, StaticType},
     subclass::prelude::ObjectSubclassIsExt,
     traits::SorterExt,
 };
 
 mod imp {
-    use std::cell::RefCell;
-    use std::collections::HashMap;
-    use std::time::Instant;
-
-    use crate::dal::{self, ReceiptEntityColumn};
+    use crate::dal;
     use crate::entities::ReceiptEntity;
     use crate::receiptlistitem::ReceiptEntityObject;
     use gtk::prelude::*;
     use gtk::subclass::prelude::*;
     use gtk::{gio, glib};
+    use std::cell::RefCell;
+    use std::ops::Deref;
+
+
 
     // Object holding the state
     #[derive(Default)]
@@ -24,9 +24,12 @@ mod imp {
         //object_cache: RefCell<HashMap<u32, ReceiptEntityObject>>,
         object_cache: RefCell<Vec<ReceiptEntityObject>>,
         pub sorter: RefCell<Option<gtk::Sorter>>,
-        sort_by: RefCell<Option<Vec<(dal::ReceiptEntityColumn, dal::SortOrder)>>>,
+        sort_by: RefCell<Vec<(String, dal::SortOrder)>>,
         pub parent_items_changed: RefCell<Option<Box<dyn Fn(u32, u32, u32)>>>,
         fetching_more: RefCell<bool>,
+        max_accessed_position: RefCell<u32>,
+        //dao: Rc<RefCell<T>>,
+        item_type: Option<glib::types::Type>,
     }
 
     // The central trait for subclassing a GObject
@@ -39,62 +42,82 @@ mod imp {
 
     impl SqlListStore {
         const DEFAULT_FETCH_LENGTH: u32 = 100;
-        const DEFAULT_FETCH_MARGIN: u32 = 10;
+        const DEFAULT_FETCH_MARGIN: u32 = 1;
 
         fn update_sort_by(&self) {
-            let mut sort_by = vec![];
+            self.sort_by.borrow_mut().clear();
+
             if let Some(sorter) = self.sorter.borrow().clone() {
                 if let Ok(sorter) = sorter.downcast::<gtk::ColumnViewSorter>() {
                     for position in 0..sorter.n_sort_columns() {
                         let (column, order) = sorter.nth_sort_column(position);
                         if let Some(column) = column {
-                            if let Some(column) =
-                                dal::ReceiptEntityColumn::from_string(column.id().unwrap().as_str())
-                            {
+                            if let Some(column_id) = column.id() {
                                 let order = match order {
                                     gtk::SortType::Ascending => dal::SortOrder::Ascending,
                                     gtk::SortType::Descending => dal::SortOrder::Descending,
                                     _ => dal::SortOrder::Ascending,
                                 };
-                                sort_by.push((column, order));
+                                self.sort_by
+                                    .borrow_mut()
+                                    .push((String::from(column_id.as_str()), order));
                             }
                         }
                     }
                 }
             }
-            if sort_by.len() == 0 {
-                self.sort_by.replace(None);
-            } else {
-                self.sort_by.replace(Some(sort_by));
-            }
         }
 
         pub fn on_sorter_changed(&self) -> (u32, u32, u32) {
             self.update_sort_by();
-            // TODO: do not fetch here; just remove all items and report (0, <n_items()>, 0).
-            let removed = u32::try_from(self.object_cache.borrow().len()).unwrap();
+            let removed = self.n_items_internal();
             self.object_cache.replace(vec![]);
-            let added = u32::try_from(self.fetch_items()).unwrap();
+            self.schedule_fetch_more();
             // positon, removed, added
-            (0, removed, added)
+            (0, removed, 0)
         }
 
-        fn fetch_items(&self) -> u32 {
-            if let Ok(entities) = dal::get_receipts(
+        fn fetch_more(&self) -> u32 {
+            match dal::DataAccessor::fetch_rows(
+                self.n_items_internal(),
                 Some(Self::DEFAULT_FETCH_LENGTH),
-                Some(self.n_items()),
-                &self.sort_by.borrow(),
+                self.sort_by.borrow().deref()
             ) {
-                let added = entities.len();
-                for entity in entities {
-                    self.object_cache
-                        .borrow_mut()
-                        .push(ReceiptEntityObject::new(entity));
+                Ok(rows) => {
+                    let added = 0;//rows.len();
+                    rows.map(|r| r.try_into()).collect();
+                    for entity in rows {
+                        self.object_cache
+                            .borrow_mut()
+                            .push(ReceiptEntityObject::new(entity));
+                    }
+                    added.try_into().unwrap()
                 }
-                added.try_into().unwrap()
-            } else {
-                0
+                Err(e) => {
+                    dbg!(e);
+                    0
+                }
             }
+        }
+
+        fn schedule_fetch_more(&self) {
+            if !(*self.fetching_more.borrow()) {
+                self.fetching_more.replace(true);
+                println!("fetching more...");
+                glib::source::idle_add_local_once(glib::clone!(@weak self as sf => move || {
+                    let pos = sf.n_items_internal();
+                    let added = sf.fetch_more();
+                    sf.fetching_more.replace(false);
+                    println!("fetching complete. {:?}", (pos, 0, added));
+                    if let Some(f) = sf.parent_items_changed.borrow().as_deref() {
+                        f(pos, 0, added);
+                    };
+                }));
+            }
+        }
+
+        fn n_items_internal(&self) -> u32 {
+            TryInto::<u32>::try_into(self.object_cache.borrow().len()).unwrap()
         }
     }
 
@@ -103,16 +126,10 @@ mod imp {
         fn constructed(&self) {
             // Call "constructed" on parent
             self.parent_constructed();
-
-            // initialize object cache with empty objects
-            // let id_list = dal::get_receipts_id(None).unwrap();
-            // let mut vec = Vec::new();
-            // for index in 0..Self::DEFAULT_FETCH_LENGTH {
-            //     vec.push(ReceiptEntityObject::new(ReceiptEntity::default()));
-            // }
             self.object_cache.replace(vec![]);
+            self.sort_by.replace(vec![]);
             self.update_sort_by();
-            self.fetch_items();
+            self.schedule_fetch_more();
         }
     }
 
@@ -123,37 +140,50 @@ mod imp {
         }
 
         fn n_items(&self) -> u32 {
-            let r = TryInto::<u32>::try_into(self.object_cache.borrow().len()).unwrap();
+            let r = self.n_items_internal();
             println!("n_items: {:}", r);
             r
         }
 
         fn item(&self, position: u32) -> Option<glib::Object> {
-            if position >= (self.n_items() - Self::DEFAULT_FETCH_MARGIN) {
+            println!("item requested for pos: {:}", position);
+            if position > *self.max_accessed_position.borrow() {
+                *self.max_accessed_position.borrow_mut() = position;
+            }
+
+            if (self.n_items_internal() < Self::DEFAULT_FETCH_MARGIN)
+                || (position >= (self.n_items_internal() - Self::DEFAULT_FETCH_MARGIN))
+            {
                 // FIXME: do not fetch more when a fetch is already scheduled.
-                // FIXME: 
+                // FIXME:
                 if !(*self.fetching_more.borrow()) {
                     self.fetching_more.replace(true);
                     println!("fetching more...");
-                    glib::source::idle_add_local_once(glib::clone!(@weak self as sf => move || {
-                        let pos = sf.n_items();
-                        let added = sf.fetch_items();
+                    glib::source::timeout_add_local_once(
+                        std::time::Duration::new(0, 100),
+                        glib::clone!(@weak self as sf => move || {
+                        glib::source::idle_add_local_once(glib::clone!(@weak sf => move || {
+                        let pos = sf.n_items_internal();
+                        let added = sf.fetch_more();
                         sf.fetching_more.replace(false);
                         println!("fetching complete. {:?}", (pos, 0, added));
                         if let Some(f) = sf.parent_items_changed.borrow().as_deref() {
                             f(pos, 0, added);
                         };
-                    }));
+                    }));}),
+                    );
                 }
             }
 
-            println!("item requested for pos: {:}", position);
-
-            Some(
-                self.object_cache.borrow()[position as usize]
-                    .clone()
-                    .upcast(),
-            )
+            if TryInto::<usize>::try_into(position).unwrap() >= self.object_cache.borrow().len() {
+                None
+            } else {
+                Some(
+                    self.object_cache.borrow()[position as usize]
+                        .clone()
+                        .upcast(),
+                )
+            }
         }
     }
 }
@@ -161,13 +191,14 @@ mod imp {
 glib::wrapper! {
     pub struct SqlListStore(ObjectSubclass<imp::SqlListStore>)//,subclass::basic::ClassStruct<imp::SqlListStore>>)
         @implements gio::ListModel;
-        //match fn {
-        //    type_ => || imp::SqlListStore::static_type().into_glib(),
-        //}
 }
 
 impl SqlListStore {
-    pub fn new(sorter: Option<gtk::Sorter>) -> Self {
+    pub fn new(
+        table_name: &str,
+        item_type: glib::types::Type,
+        sorter: Option<gtk::Sorter>,
+    ) -> Self {
         let obj: Self = glib::Object::builder().build();
         obj.set_sorter(sorter);
         obj.imp()
@@ -181,24 +212,6 @@ impl SqlListStore {
     }
 
     pub fn on_sorter_changed(&self, sorter: &gtk::Sorter, _: gtk::SorterChange) {
-        println!("sorter was changed: ");
-        println!(
-            "{:?}",
-            sorter
-                .clone()
-                .downcast::<gtk::ColumnViewSorter>()
-                .unwrap()
-                .nth_sort_column(0)
-        );
-        println!(
-            "{:?}",
-            sorter
-                .clone()
-                .downcast::<gtk::ColumnViewSorter>()
-                .unwrap()
-                .nth_sort_column(1)
-        );
-
         let (position, removed, added) = self.imp().on_sorter_changed();
         self.items_changed(position, removed, added);
     }
@@ -220,6 +233,6 @@ impl SqlListStore {
 
 impl Default for SqlListStore {
     fn default() -> Self {
-        Self::new(None)
+        Self::new("", glib::Object::static_type(), None)
     }
 }

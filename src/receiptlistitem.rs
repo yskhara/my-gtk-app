@@ -8,12 +8,13 @@ use crate::entities::ReceiptEntity;
 
 mod imp {
     use super::*;
-    use std::{cell::RefCell, rc::Rc, sync::Arc};
+    use std::{cell::Cell, rc::Rc, sync::Arc, borrow::BorrowMut};
 
     // Object holding the state
     #[derive(Default)]
     pub struct ReceiptEntityObject {
-        entity: Rc<RefCell<ReceiptEntity>>,
+        pub id: Cell<u32>,
+        pub datetime: Cell<i64>,
     }
 
     // The central trait for subclassing a GObject
@@ -23,11 +24,15 @@ mod imp {
         type Type = super::ReceiptEntityObject;
     }
 
-    impl ReceiptEntityObject {
-        pub fn set_entity(&self, entity: ReceiptEntity) {
-            self.entity.replace(entity);
-        }
-    }
+    // impl ReceiptEntityObject {
+    //     pub fn set_id(&self, id: u32) {
+    //         self.id.replace(id);
+    //     }
+
+    //     pub fn set_datetime(&self, datetime: i64) {
+    //         self.datetime.replace(datetime);
+    //     }
+    // }
 
     // Trait shared by all GObjects
     impl ObjectImpl for ReceiptEntityObject {
@@ -48,41 +53,39 @@ mod imp {
         fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
                 "id" => {
-                    self.entity.borrow_mut().id =
-                        value.get().expect("The value needs to be of type `u32`.")
+                    self.id.set(value.get().expect("The value needs to be of type `u32`."))
                 }
                 "datetime" => {
-                    self.entity.borrow_mut().datetime =
-                        value.get().expect("The value needs to be of type `i64`.")
+                    self.datetime.set(value.get().expect("The value needs to be of type `i64`."))
                 }
-                "storekey" => {
-                    self.entity.borrow_mut().store_key =
-                        value.get().expect("The value needs to be of type `u32`.")
-                }
-                "currencyid" => {
-                    self.entity.borrow_mut().currency_id =
-                        value.get().expect("The value needs to be of type `u32`.")
-                }
-                "paidamount" => {
-                    self.entity.borrow_mut().paid_amount =
-                        value.get().expect("The value needs to be of type `u32`.")
-                }
-                "paymentmethodkey" => {
-                    self.entity.borrow_mut().payment_method_key =
-                        value.get().expect("The value needs to be of type `u32`.")
-                }
+                // "storekey" => {
+                //     self.entity.borrow_mut().store_key =
+                //         value.get().expect("The value needs to be of type `u32`.")
+                // }
+                // "currencyid" => {
+                //     self.entity.borrow_mut().currency_id =
+                //         value.get().expect("The value needs to be of type `u32`.")
+                // }
+                // "paidamount" => {
+                //     self.entity.borrow_mut().paid_amount =
+                //         value.get().expect("The value needs to be of type `u32`.")
+                // }
+                // "paymentmethodkey" => {
+                //     self.entity.borrow_mut().payment_method_key =
+                //         value.get().expect("The value needs to be of type `u32`.")
+                // }
                 _ => unimplemented!(),
             }
         }
 
         fn property(&self, _id: usize, pspec: &ParamSpec) -> Value {
             match pspec.name() {
-                "id" => self.entity.borrow().id.to_value(),
-                "datetime" => self.entity.borrow().datetime.to_value(),
-                "storekey" => self.entity.borrow().store_key.to_value(),
-                "currencyid" => self.entity.borrow().currency_id.to_value(),
-                "paidamount" => self.entity.borrow().paid_amount.to_value(),
-                "paymentmethodkey" => self.entity.borrow().payment_method_key.to_value(),
+                "id" => self.id.get().to_value(),
+                "datetime" => self.datetime.get().to_value(),
+                // "storekey" => self.entity.borrow().store_key.to_value(),
+                // "currencyid" => self.entity.borrow().currency_id.to_value(),
+                // "paidamount" => self.entity.borrow().paid_amount.to_value(),
+                // "paymentmethodkey" => self.entity.borrow().payment_method_key.to_value(),
                 _ => unimplemented!(),
             }
         }
@@ -96,11 +99,8 @@ glib::wrapper! {
 impl ReceiptEntityObject {
     pub fn new(entity: ReceiptEntity) -> Self {
         let obj: Self = Object::builder().build();
-        obj.imp().set_entity(entity);
+        obj.imp().id.set(entity.id);
+        obj.imp().datetime.set(entity.datetime);
         obj
-    }
-
-    pub fn set_entity(self, entity: ReceiptEntity) {
-        self.imp().set_entity(entity);
     }
 }
