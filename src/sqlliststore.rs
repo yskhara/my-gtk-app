@@ -1,9 +1,4 @@
-use gtk::{
-    gio, glib,
-    prelude::{ListModelExt, StaticType},
-    subclass::prelude::ObjectSubclassIsExt,
-    traits::SorterExt,
-};
+use gtk::{gio, glib, prelude::*, subclass::prelude::*, traits::SorterExt};
 
 mod imp {
     use crate::dal;
@@ -14,8 +9,6 @@ mod imp {
     use gtk::{gio, glib};
     use std::cell::RefCell;
     use std::ops::Deref;
-
-
 
     // Object holding the state
     #[derive(Default)]
@@ -81,16 +74,16 @@ mod imp {
             match dal::DataAccessor::fetch_rows(
                 self.n_items_internal(),
                 Some(Self::DEFAULT_FETCH_LENGTH),
-                self.sort_by.borrow().deref()
+                self.sort_by.borrow().deref(),
             ) {
                 Ok(rows) => {
-                    let added = 0;//rows.len();
-                    rows.map(|r| r.try_into()).collect();
+                    let added = rows.len();
+                    /*rows.map(|r| r.try_into()).collect();
                     for entity in rows {
                         self.object_cache
                             .borrow_mut()
                             .push(ReceiptEntityObject::new(entity));
-                    }
+                    }*/
                     added.try_into().unwrap()
                 }
                 Err(e) => {
@@ -192,6 +185,14 @@ glib::wrapper! {
     pub struct SqlListStore(ObjectSubclass<imp::SqlListStore>)//,subclass::basic::ClassStruct<imp::SqlListStore>>)
         @implements gio::ListModel;
 }
+
+trait SqlListStoreExt {
+    fn set_sorter(&self, sorter: Option<gtk::Sorter>);
+}
+
+pub trait SqlListStoreImpl: ObjectImpl {}
+
+unsafe impl<T: SqlListStoreImpl> IsSubclassable<T> for SqlListStore {}
 
 impl SqlListStore {
     pub fn new(

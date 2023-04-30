@@ -3,6 +3,7 @@ mod dal;
 mod entities;
 mod receiptlistitem;
 mod sqlliststore;
+mod receiptliststore;
 
 use dal::testdatagenerator;
 use gtk::prelude::*;
