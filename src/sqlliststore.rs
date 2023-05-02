@@ -1,14 +1,47 @@
+use gtk::glib::clone::*;
+use gtk::glib::subclass::types::*;
+use gtk::glib::translate::ToGlibPtr;
 use gtk::{gio, glib, prelude::*, subclass::prelude::*, traits::SorterExt};
+
+mod ffi {
+    use super::*;
+    pub type SqlListStore = <super::imp::SqlListStore as ObjectSubclass>::Instance;
+
+    #[repr(C)]
+    pub struct SqlListStoreClass {
+        pub parent_class: glib::gobject_ffi::GObjectClass,
+        pub items_changed: Option<
+            unsafe extern "C" fn(*mut SqlListStore, position: u32, removed: u32, added: u32),
+        >,
+    }
+
+    unsafe impl ClassStruct for SqlListStoreClass {
+        type Type = super::imp::SqlListStore;
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn items_changed(
+        this: *mut SqlListStore,
+        position: u32,
+        removed: u32,
+        added: u32,
+    ) {
+        (*this).imp().obj().items_changed(position, removed, added)
+    }
+}
 
 mod imp {
     use crate::dal;
     use crate::entities::ReceiptEntity;
     use crate::receiptlistitem::ReceiptEntityObject;
+    use crate::sqlliststore::SqlListStoreImplExt;
     use gtk::prelude::*;
     use gtk::subclass::prelude::*;
     use gtk::{gio, glib};
     use std::cell::RefCell;
     use std::ops::Deref;
+
+    use super::SqlListStoreImpl;
 
     // Object holding the state
     #[derive(Default)]
@@ -18,7 +51,7 @@ mod imp {
         object_cache: RefCell<Vec<ReceiptEntityObject>>,
         pub sorter: RefCell<Option<gtk::Sorter>>,
         sort_by: RefCell<Vec<(String, dal::SortOrder)>>,
-        pub parent_items_changed: RefCell<Option<Box<dyn Fn(u32, u32, u32)>>>,
+        //pub parent_items_changed: RefCell<Option<Box<dyn Fn(u32, u32, u32)>>>,
         fetching_more: RefCell<bool>,
         max_accessed_position: RefCell<u32>,
         //dao: Rc<RefCell<T>>,
@@ -102,9 +135,7 @@ mod imp {
                     let added = sf.fetch_more();
                     sf.fetching_more.replace(false);
                     println!("fetching complete. {:?}", (pos, 0, added));
-                    if let Some(f) = sf.parent_items_changed.borrow().as_deref() {
-                        f(pos, 0, added);
-                    };
+                    sf.items_changed(pos, 0, added);
                 }));
             }
         }
@@ -152,19 +183,13 @@ mod imp {
                 if !(*self.fetching_more.borrow()) {
                     self.fetching_more.replace(true);
                     println!("fetching more...");
-                    glib::source::timeout_add_local_once(
-                        std::time::Duration::new(0, 100),
-                        glib::clone!(@weak self as sf => move || {
-                        glib::source::idle_add_local_once(glib::clone!(@weak sf => move || {
+                    glib::source::idle_add_local_once(glib::clone!(@weak self as sf => move || {
                         let pos = sf.n_items_internal();
                         let added = sf.fetch_more();
                         sf.fetching_more.replace(false);
                         println!("fetching complete. {:?}", (pos, 0, added));
-                        if let Some(f) = sf.parent_items_changed.borrow().as_deref() {
-                            f(pos, 0, added);
-                        };
-                    }));}),
-                    );
+                        sf.items_changed(pos, 0, added);
+                    }));
                 }
             }
 
@@ -179,20 +204,14 @@ mod imp {
             }
         }
     }
+
+    impl SqlListStoreImpl for SqlListStore {}
 }
 
 glib::wrapper! {
     pub struct SqlListStore(ObjectSubclass<imp::SqlListStore>)//,subclass::basic::ClassStruct<imp::SqlListStore>>)
         @implements gio::ListModel;
 }
-
-trait SqlListStoreExt {
-    fn set_sorter(&self, sorter: Option<gtk::Sorter>);
-}
-
-pub trait SqlListStoreImpl: ObjectImpl {}
-
-unsafe impl<T: SqlListStoreImpl> IsSubclassable<T> for SqlListStore {}
 
 impl SqlListStore {
     pub fn new(
@@ -202,33 +221,7 @@ impl SqlListStore {
     ) -> Self {
         let obj: Self = glib::Object::builder().build();
         obj.set_sorter(sorter);
-        obj.imp()
-            .parent_items_changed
-            .replace(Some(std::boxed::Box::new(
-                glib::clone!(@weak obj => move |position, removed, added| {
-                    obj.items_changed(position, removed, added);
-                }),
-            )));
         obj
-    }
-
-    pub fn on_sorter_changed(&self, sorter: &gtk::Sorter, _: gtk::SorterChange) {
-        let (position, removed, added) = self.imp().on_sorter_changed();
-        self.items_changed(position, removed, added);
-    }
-
-    pub fn set_sorter(&self, sorter: Option<gtk::Sorter>) {
-        // FIXME: dont just unwrap; care for None.
-        if let Some(sorter) = sorter.clone() {
-            sorter.connect_changed(glib::clone!(@weak self as sf => move |sorter, change| {
-                sf.on_sorter_changed(sorter, change)
-            }));
-        }
-        self.imp().sorter.replace(sorter);
-    }
-
-    pub fn get_sorter(&self) -> Option<gtk::Sorter> {
-        self.imp().sorter.borrow().clone()
     }
 }
 
@@ -237,3 +230,64 @@ impl Default for SqlListStore {
         Self::new("", glib::Object::static_type(), None)
     }
 }
+
+trait SqlListStoreExt: IsA<SqlListStore> + 'static {
+    fn get_sorter(&self) -> Option<gtk::Sorter>;
+    fn set_sorter(&self, sorter: Option<gtk::Sorter>);
+    fn on_sorter_changed(&self, sorter: &gtk::Sorter, _: gtk::SorterChange);
+}
+
+impl<O: IsA<SqlListStore>> SqlListStoreExt for O {
+    fn get_sorter(&self) -> Option<gtk::Sorter> {
+        let this = self.as_ref();
+        this.imp().sorter.borrow().clone()
+    }
+
+    fn set_sorter(&self, sorter: Option<gtk::Sorter>) {
+        let this = self.as_ref();
+        if let Some(sorter) = sorter.clone() {
+            sorter.connect_changed(glib::clone!(@weak this => move |sorter, change| {
+                this.on_sorter_changed(sorter, change);
+            }));
+        }
+        this.imp().sorter.replace(sorter);
+    }
+
+    fn on_sorter_changed(&self, sorter: &gtk::Sorter, _: gtk::SorterChange) {
+        let this = self.as_ref();
+        let (position, removed, added) = this.imp().on_sorter_changed();
+        this.items_changed(position, removed, added);
+    }
+}
+
+pub trait SqlListStoreImpl: SqlListStoreImplExt + ObjectImpl {
+    fn items_changed(&self, position: u32, removed: u32, added: u32) {
+        self.parent_items_changed(position, removed, added);
+    }
+}
+
+pub trait SqlListStoreImplExt {
+    fn parent_items_changed(&self, position: u32, removed: u32, added: u32);
+}
+
+impl<T: SqlListStoreImpl> SqlListStoreImplExt for T {
+    fn parent_items_changed(&self, position: u32, removed: u32, added: u32) {
+        unsafe {
+            let data = T::type_data();
+            let parent_class = data.as_ref().parent_class() as *mut ffi::SqlListStoreClass;
+            if let Some(f) = (*parent_class).items_changed {
+                f(
+                    self.obj()
+                        .unsafe_cast_ref::<SqlListStore>()
+                        .to_glib_none()
+                        .0,
+                    position,
+                    removed,
+                    added,
+                )
+            }
+        }
+    }
+}
+
+unsafe impl<T: SqlListStoreImpl> IsSubclassable<T> for SqlListStore {}
