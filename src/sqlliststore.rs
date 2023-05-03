@@ -231,7 +231,7 @@ impl Default for SqlListStore {
     }
 }
 
-trait SqlListStoreExt: IsA<SqlListStore> + 'static {
+pub trait SqlListStoreExt: IsA<SqlListStore> + 'static {
     fn get_sorter(&self) -> Option<gtk::Sorter>;
     fn set_sorter(&self, sorter: Option<gtk::Sorter>);
     fn on_sorter_changed(&self, sorter: &gtk::Sorter, _: gtk::SorterChange);

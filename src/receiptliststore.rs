@@ -1,7 +1,7 @@
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
 
-use crate::sqlliststore::SqlListStore;
+use crate::sqlliststore::{SqlListStore, SqlListStoreExt};
 use gtk::prelude::*;
 
 mod imp {
@@ -42,20 +42,20 @@ mod imp {
     }
     // ANCHOR_END: object_impl
     impl ReceiptListStore {}
-    
+
     // Trait shared by all ListModels
     impl ListModelImpl for ReceiptListStore {
         fn item_type(&self) -> glib::Type {
-        todo!()
-    }
+            todo!()
+        }
 
         fn n_items(&self) -> u32 {
-        todo!()
-    }
+            todo!()
+        }
 
         fn item(&self, position: u32) -> Option<glib::Object> {
-        todo!()
-    }
+            todo!()
+        }
     }
 
     // Trait shared by all SqlListStores
@@ -64,7 +64,7 @@ mod imp {
 
 glib::wrapper! {
     pub struct ReceiptListStore(ObjectSubclass<imp::ReceiptListStore>)
-    @extends SqlListStore,
+        @extends SqlListStore,
         @implements gio::ListModel;
 }
 
@@ -76,33 +76,7 @@ impl ReceiptListStore {
     ) -> Self {
         let obj: Self = glib::Object::builder().build();
         obj.set_sorter(sorter);
-        obj.imp()
-            .parent_items_changed
-            .replace(Some(std::boxed::Box::new(
-                glib::clone!(@weak obj => move |position, removed, added| {
-                    obj.items_changed(position, removed, added);
-                }),
-            )));
         obj
-    }
-
-    pub fn on_sorter_changed(&self, sorter: &gtk::Sorter, _: gtk::SorterChange) {
-        let (position, removed, added) = self.imp().on_sorter_changed();
-        self.items_changed(position, removed, added);
-    }
-
-    pub fn set_sorter(&self, sorter: Option<gtk::Sorter>) {
-        // FIXME: dont just unwrap; care for None.
-        if let Some(sorter) = sorter.clone() {
-            sorter.connect_changed(glib::clone!(@weak self as sf => move |sorter, change| {
-                sf.on_sorter_changed(sorter, change)
-            }));
-        }
-        self.imp().sorter.replace(sorter);
-    }
-
-    pub fn get_sorter(&self) -> Option<gtk::Sorter> {
-        self.imp().sorter.borrow().clone()
     }
 }
 
