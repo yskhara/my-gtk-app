@@ -104,7 +104,7 @@ mod imp {
         }
 
         fn fetch_more(&self) -> u32 {
-            match dal::DataAccessor::fetch_rows(
+            match dal::DataAccessor::fetch_entities::<ReceiptEntityObject>(
                 self.n_items_internal(),
                 Some(Self::DEFAULT_FETCH_LENGTH),
                 self.sort_by.borrow().deref(),

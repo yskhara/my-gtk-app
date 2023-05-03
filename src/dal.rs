@@ -3,7 +3,7 @@ pub mod testdatagenerator;
 
 use std::{sync::Mutex, time::Instant};
 
-use crate::entities::ReceiptEntity;
+use crate::{entities::ReceiptEntity, receiptlistitem::ReceiptEntityObject};
 use once_cell::sync::Lazy;
 use rusqlite::Connection;
 
@@ -59,71 +59,77 @@ pub struct ReceiptSqlDataAccessor {
     data_accessor: SqlDataAccessor,
 }
 
-impl SqlDataAccessor {
-    fn fetch_rows(
-        &self,
-        offset: u32,
-        row_count: Option<u32>,
-        sort_by: &Vec<(std::string::String, SortOrder)>,
-    ) -> Result<Vec<&rusqlite::Row>, Box<dyn std::error::Error>> {
-        let mut query = format!("SELECT * FROM {}", self.table_name);
+// impl SqlDataAccessor {
+//     fn fetch_entities(
+//         &self,
+//         offset: u32,
+//         row_count: Option<u32>,
+//         sort_by: &Vec<(std::string::String, SortOrder)>,
+//     ) -> Result<Vec<&rusqlite::Row>, Box<dyn std::error::Error>> {
+//         let mut query = format!("SELECT * FROM {}", self.table_name);
 
-        if sort_by.len() > 0 {
-            query += " ORDER BY";
-            for i in 0..sort_by.len() {
-                let (column, order) = &sort_by[i];
-                query += &format!(" {} {}", column.to_string(), order.to_str());
-                if i < sort_by.len() - 1 {
-                    query += &",";
-                }
-            }
-        }
+//         if sort_by.len() > 0 {
+//             query += " ORDER BY";
+//             for i in 0..sort_by.len() {
+//                 let (column, order) = &sort_by[i];
+//                 query += &format!(" {} {}", column.to_string(), order.to_str());
+//                 if i < sort_by.len() - 1 {
+//                     query += &",";
+//                 }
+//             }
+//         }
 
-        if let Some(row_count) = row_count {
-            query += &format!(" LIMIT {}, {}", offset.to_string(), row_count.to_string());
-        }
+//         if let Some(row_count) = row_count {
+//             query += &format!(" LIMIT {}, {}", offset.to_string(), row_count.to_string());
+//         }
 
-        query += ";";
+//         query += ";";
 
-        println!("{:}", query);
-        let mut rows = vec![];
-        for row in CONNECTION
-            .lock()?
-            .prepare(&query)?
-            .query_map([], |r| Ok(r))?
-        {
-            rows.push(row?);
-        }
-        Ok(rows)
-    }
-}
+//         println!("{:}", query);
+//         let mut rows = vec![];
+//         let con = CONNECTION.lock()?;
+//         let mut stmt = con.prepare(&query)?;
+//         let columns = stmt.column_names();
+//         for row in stmt.query_map([], |r| {
+//             let map = std::collections::HashMap::<&str, String>::new();
+//             for k in columns {
+//                 map.insert(k, r.get_unwrap(k));
+//             }
+//             Ok(map)
+//         })?
+//         {
+//             rows.push(row?);
+//         }
+//         Ok(rows)
+//     }
+// }
 
-impl ReceiptSqlDataAccessor {
-    pub fn new(table_name: &str) -> Self {
-        ReceiptSqlDataAccessor {
-            data_accessor: SqlDataAccessor {
-                table_name: table_name,
-            },
-        }
-    }
-}
+// impl ReceiptSqlDataAccessor {
+//     pub fn new(table_name: &str) -> Self {
+//         ReceiptSqlDataAccessor {
+//             data_accessor: SqlDataAccessor {
+//                 table_name: table_name,
+//             },
+//         }
+//     }
+// }
 
-impl ReceiptDataAccessorImpl for ReceiptSqlDataAccessor {
-    fn fetch_entities(
-        &self,
-        offset: u32,
-        row_count: Option<u32>,
-        sort_by: &Vec<(std::string::String, SortOrder)>,
-    ) -> Result<Vec<ReceiptEntity>, Box<dyn std::error::Error>> {
-        let rows = self.data_accessor.fetch_rows(offset, row_count, sort_by)?;
-        let mut fetched = vec![];
-        for row in rows {
-            fetched.push(ReceiptEntity::try_new(row)?);
-        }
-        dbg!(fetched.len());
-        Ok(fetched)
-    }
-}
+// impl ReceiptDataAccessorImpl for ReceiptSqlDataAccessor {
+//     fn fetch_entities(
+//         &self,
+//         offset: u32,
+//         row_count: Option<u32>,
+//         sort_by: &Vec<(std::string::String, SortOrder)>,
+//     ) -> Result<Vec<ReceiptEntity>, Box<dyn std::error::Error>> {
+//         let rows = self.data_accessor.fetch_rows(offset, row_count, sort_by)?;
+//         let mut fetched = vec![];
+//         for row in rows {
+//             fetched.push(ReceiptEntity::try_new(row)?);
+//         }
+//         dbg!(fetched.len());
+//         Ok(fetched)
+//     }
+// }
 
 pub struct DataAccessor {
     table_name: String,
@@ -154,11 +160,11 @@ impl DataAccessor {
         unimplemented!();
     }
 
-    pub fn fetch_rows(
+    pub fn fetch_entities<E: EntityFromSql>(
         offset: u32,
         row_count: Option<u32>,
         sort_by: &Vec<(std::string::String, SortOrder)>,
-    ) -> Result<Vec<ReceiptEntity>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<E>, Box<dyn std::error::Error>> {
         let mut query = std::string::String::from("SELECT * FROM receipt");
 
         if sort_by.len() > 0 {
@@ -184,7 +190,7 @@ impl DataAccessor {
         for entity in CONNECTION
             .lock()?
             .prepare(&query)?
-            .query_map([], |row| ReceiptEntity::try_new(row))?
+            .query_map([], |row| E::try_new_from_row(row))?
         {
             if let Ok(entity) = entity {
                 vec.push(entity)
@@ -194,6 +200,10 @@ impl DataAccessor {
         println!("{:} items loaded.", vec.len());
         Ok(vec)
     }
+}
+
+pub trait EntityFromSql {
+    fn try_new_from_row(row: &rusqlite::Row) -> Result<Self, rusqlite::Error> where Self: Sized;
 }
 
 pub static CONNECTION: Lazy<Mutex<Connection>> = Lazy::new(|| {

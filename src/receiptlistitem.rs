@@ -5,6 +5,7 @@ use gtk::subclass::prelude::*;
 use once_cell::sync::Lazy;
 
 use crate::entities::ReceiptEntity;
+use crate::entities::ReceiptEntityColumn;
 
 mod imp {
     use super::*;
@@ -102,5 +103,14 @@ impl ReceiptEntityObject {
         obj.imp().id.set(entity.id);
         obj.imp().datetime.set(entity.datetime);
         obj
+    }
+}
+
+impl crate::dal::EntityFromSql for ReceiptEntityObject {
+    fn try_new_from_row(row: &rusqlite::Row) -> Result<Self, rusqlite::Error> {
+        let obj: Self = Object::builder().build();
+        obj.imp().id.set(row.get(ReceiptEntityColumn::Id.to_string())?);
+        obj.imp().datetime.set(row.get(ReceiptEntityColumn::Datetime.to_string())?);
+        Ok(obj)
     }
 }
