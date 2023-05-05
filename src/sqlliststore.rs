@@ -64,6 +64,11 @@ mod imp {
         const NAME: &'static str = "MercurySqlListStore";
         type Type = super::SqlListStore;
         type Interfaces = (gio::ListModel,);
+        type Class = super::ffi::SqlListStoreClass;
+    
+        fn class_init(klass: &mut Self::Class) {
+            klass.items_changed = Some(super::ffi::items_changed);
+        }
     }
 
     impl SqlListStore {
@@ -109,8 +114,8 @@ mod imp {
                 Some(Self::DEFAULT_FETCH_LENGTH),
                 self.sort_by.borrow().deref(),
             ) {
-                Ok(rows) => {
-                    let added = rows.len();
+                Ok(entities) => {
+                    let added = entities.len();
                     /*rows.map(|r| r.try_into()).collect();
                     for entity in rows {
                         self.object_cache
@@ -136,6 +141,7 @@ mod imp {
                     sf.fetching_more.replace(false);
                     println!("fetching complete. {:?}", (pos, 0, added));
                     sf.items_changed(pos, 0, added);
+                    println!("call to items_changed returned.");
                 }));
             }
         }
@@ -272,7 +278,13 @@ pub trait SqlListStoreImplExt {
 
 impl<T: SqlListStoreImpl> SqlListStoreImplExt for T {
     fn parent_items_changed(&self, position: u32, removed: u32, added: u32) {
+        println!("calling parent_items_changed.");
         unsafe {
+            let klass = self.as_ref().class();
+            (klass.as_ref().set_a.unwrap())(
+                self.as_ref().imp().instance().as_ptr() as *mut ffi::Foo,
+                value,
+            );
             let data = T::type_data();
             let parent_class = data.as_ref().parent_class() as *mut ffi::SqlListStoreClass;
             if let Some(f) = (*parent_class).items_changed {
