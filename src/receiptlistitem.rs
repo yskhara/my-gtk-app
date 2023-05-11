@@ -9,7 +9,7 @@ use crate::entities::ReceiptEntityColumn;
 
 mod imp {
     use super::*;
-    use std::{cell::Cell, rc::Rc, sync::Arc, borrow::BorrowMut};
+    use std::{borrow::BorrowMut, cell::Cell, rc::Rc, sync::Arc};
 
     // Object holding the state
     #[derive(Default)]
@@ -53,12 +53,12 @@ mod imp {
 
         fn set_property(&self, _id: usize, value: &Value, pspec: &ParamSpec) {
             match pspec.name() {
-                "id" => {
-                    self.id.set(value.get().expect("The value needs to be of type `u32`."))
-                }
-                "datetime" => {
-                    self.datetime.set(value.get().expect("The value needs to be of type `i64`."))
-                }
+                "id" => self
+                    .id
+                    .set(value.get().expect("The value needs to be of type `u32`.")),
+                "datetime" => self
+                    .datetime
+                    .set(value.get().expect("The value needs to be of type `i64`.")),
                 // "storekey" => {
                 //     self.entity.borrow_mut().store_key =
                 //         value.get().expect("The value needs to be of type `u32`.")
@@ -91,6 +91,12 @@ mod imp {
             }
         }
     }
+
+    #[derive(Default)]
+    pub struct SqlEntity {
+        pub id: Cell<u32>,
+        pub datetime: Cell<i64>,
+    }
 }
 
 glib::wrapper! {
@@ -109,8 +115,12 @@ impl ReceiptEntityObject {
 impl crate::dal::EntityFromSql for ReceiptEntityObject {
     fn try_new_from_row(row: &rusqlite::Row) -> Result<Self, rusqlite::Error> {
         let obj: Self = Object::builder().build();
-        obj.imp().id.set(row.get(ReceiptEntityColumn::Id.to_string())?);
-        obj.imp().datetime.set(row.get(ReceiptEntityColumn::Datetime.to_string())?);
+        obj.imp()
+            .id
+            .set(row.get(ReceiptEntityColumn::Id.to_string())?);
+        obj.imp()
+            .datetime
+            .set(row.get(ReceiptEntityColumn::Datetime.to_string())?);
         Ok(obj)
     }
 }

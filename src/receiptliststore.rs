@@ -5,19 +5,19 @@ use crate::sqlliststore::{SqlListStore, SqlListStoreExt};
 use gtk::prelude::*;
 
 mod imp {
-    use crate::dal;
-    use crate::entities::ReceiptEntity;
     use crate::receiptlistitem::ReceiptEntityObject;
-    use crate::sqlliststore::SqlListStoreImpl;
+    use crate::sqlliststore::{SqlListStoreWorker, SqlListStoreImplManual};
 
     use super::*;
     use std::cell::RefCell;
-    use std::ops::Deref;
 
     // ANCHOR: object
     // Object holding the state
     #[derive(Default)]
-    pub struct ReceiptListStore {}
+    pub struct ReceiptListStore {
+        worker: RefCell<SqlListStoreWorker<<Self as SqlListStoreImplManual>::Entity>>,
+        is_fetch_scheduled: RefCell<bool>,
+    }
     // ANCHOR_END: object
 
     // ANCHOR: subclass
@@ -59,7 +59,27 @@ mod imp {
     }
 
     // Trait shared by all SqlListStores
-    impl SqlListStoreImpl for ReceiptListStore {}
+    impl SqlListStoreImplManual for ReceiptListStore {
+        type Entity = ReceiptEntityObject;
+
+        fn borrow_worker(&self) -> std::cell::Ref<SqlListStoreWorker<Self::Entity>>
+        {
+            self.worker.borrow()
+        }
+
+        fn borrow_worker_mut(&self) -> std::cell::RefMut<SqlListStoreWorker<Self::Entity>>
+        {
+            self.worker.borrow_mut()
+        }
+
+        fn get_is_fetch_scheduled(&self) -> bool {
+            *self.is_fetch_scheduled.borrow()
+        }
+
+        fn set_is_fetch_scheduled(&self, is_fetch_scheduled: bool) {
+            *self.is_fetch_scheduled.borrow_mut() = is_fetch_scheduled;
+        }
+    }
 }
 
 glib::wrapper! {
