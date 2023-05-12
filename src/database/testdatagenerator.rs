@@ -7,6 +7,9 @@ pub fn generate_test_receipt_data() {
     let query = "
     DROP TABLE IF EXISTS receipt;
     CREATE TABLE receipt (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, datetime INTEGER, store_key INTEGER, currency_key INTEGER, paid_amount INTEGER, payment_method_key INTEGER);
+
+    DROP TABLE IF EXISTS income;
+    CREATE TABLE income (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, datetime INTEGER, store_key INTEGER, currency_key INTEGER, paid_amount INTEGER, payment_method_key INTEGER);
 ";
     connection.execute_batch(query).unwrap();
 

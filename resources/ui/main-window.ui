@@ -49,7 +49,7 @@
             <property name="min-content-width">400</property>
             <property name="min-content-height">320</property>
             <child>
-              <object class="GtkColumnView" id="receipt_list_view">
+              <object class="GtkColumnView" id="income_list_view">
                 <!-- <child>
                   <object class="GtkColumnViewColumn">
                     <property name="title">ID</property>

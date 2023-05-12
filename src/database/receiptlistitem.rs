@@ -1,15 +1,16 @@
+use super::sqlentity::EntityFromSql;
+use crate::entities::ReceiptEntityColumn;
 use glib::{Object, ParamSpec, ParamSpecInt64, ParamSpecUInt, Value};
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use once_cell::sync::Lazy;
-
-use crate::entities::ReceiptEntity;
-use crate::entities::ReceiptEntityColumn;
+use std::cell::Cell;
+use super::sqlentity::*;
 
 mod imp {
+
     use super::*;
-    use std::{borrow::BorrowMut, cell::Cell, rc::Rc, sync::Arc};
 
     // Object holding the state
     #[derive(Default)]
@@ -23,6 +24,7 @@ mod imp {
     impl ObjectSubclass for ReceiptEntityObject {
         const NAME: &'static str = "MercuryReceiptEntityObject";
         type Type = super::ReceiptEntityObject;
+        type ParentType = SqlEntity;
     }
 
     // impl ReceiptEntityObject {
@@ -92,27 +94,20 @@ mod imp {
         }
     }
 
-    #[derive(Default)]
-    pub struct SqlEntity {
-        pub id: Cell<u32>,
-        pub datetime: Cell<i64>,
-    }
+    impl SqlEntityImpl for ReceiptEntityObject {}
 }
 
 glib::wrapper! {
-    pub struct ReceiptEntityObject(ObjectSubclass<imp::ReceiptEntityObject>);
+    pub struct ReceiptEntityObject(ObjectSubclass<imp::ReceiptEntityObject>) @extends SqlEntity;
 }
 
 impl ReceiptEntityObject {
-    pub fn new(entity: ReceiptEntity) -> Self {
-        let obj: Self = Object::builder().build();
-        obj.imp().id.set(entity.id);
-        obj.imp().datetime.set(entity.datetime);
-        obj
+    pub fn new() -> Self {
+        Object::builder().build()
     }
 }
 
-impl crate::dal::EntityFromSql for ReceiptEntityObject {
+impl EntityFromSql for ReceiptEntityObject {
     fn try_new_from_row(row: &rusqlite::Row) -> Result<Self, rusqlite::Error> {
         let obj: Self = Object::builder().build();
         obj.imp()

@@ -3,31 +3,12 @@ pub mod testdatagenerator;
 
 use std::{sync::Mutex, time::Instant};
 
-use crate::{entities::ReceiptEntity, receiptlistitem::ReceiptEntityObject};
+use crate::{entities::ReceiptEntity, database::receiptlistitem::ReceiptEntityObject};
 use once_cell::sync::Lazy;
 use rusqlite::Connection;
 
 // data access layer
 
-pub enum SortOrder {
-    Ascending,
-    Descending,
-}
-
-impl SortOrder {
-    pub fn to_str(&self) -> &str {
-        match self {
-            SortOrder::Ascending => "ASC",
-            SortOrder::Descending => "DESC",
-        }
-    }
-}
-
-impl Default for SortOrder {
-    fn default() -> Self {
-        SortOrder::Ascending
-    }
-}
 
 // Trait implemented by all "ReceiptDataAccessor"s
 trait ReceiptDataAccessorImpl {
@@ -202,9 +183,6 @@ impl DataAccessor {
     }
 }
 
-pub trait EntityFromSql {
-    fn try_new_from_row(row: &rusqlite::Row) -> Result<Self, rusqlite::Error> where Self: Sized;
-}
 
 pub static CONNECTION: Lazy<Mutex<Connection>> = Lazy::new(|| {
     println!("initializing");

@@ -1,15 +1,14 @@
+use super::receiptlistitem::ReceiptEntityObject;
+use super::sqlliststore::*;
+use super::sqlliststoreworker::SqlListStoreWorker;
+use super::sqlliststore::SqlListStoreImpl;
+use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
-
-use crate::sqlliststore::{SqlListStore, SqlListStoreExt};
-use gtk::prelude::*;
+use std::cell::RefCell;
 
 mod imp {
-    use crate::receiptlistitem::ReceiptEntityObject;
-    use crate::sqlliststore::{SqlListStoreWorker, SqlListStoreImplManual};
-
     use super::*;
-    use std::cell::RefCell;
 
     // ANCHOR: object
     // Object holding the state
@@ -27,7 +26,7 @@ mod imp {
         // `NAME` needs to match `class` attribute of template
         const NAME: &'static str = "MercuryReceiptListStore";
         type Type = super::ReceiptListStore;
-        type ParentType = SqlListStore;
+        //type ParentType = SqlListStore;
         type Interfaces = (gio::ListModel,);
     }
     // ANCHOR_END: subclass
@@ -38,6 +37,9 @@ mod imp {
         fn constructed(&self) {
             // Call "constructed" on parent
             self.parent_constructed();
+            self.worker.borrow_mut().set_table_name(Self::TABLE_NAME.to_string());
+            self.worker.borrow_mut().update_sort_by();
+            self.begin_polling();
         }
     }
     // ANCHOR_END: object_impl
@@ -45,30 +47,29 @@ mod imp {
 
     // Trait shared by all ListModels
     impl ListModelImpl for ReceiptListStore {
-        fn item_type(&self) -> glib::Type {
-            todo!()
+        fn item_type(&self) -> glib::types::Type {
+            <Self as SqlListStoreImplManual>::Entity::static_type()
         }
 
         fn n_items(&self) -> u32 {
-            todo!()
+            self.worker.borrow().n_items()
         }
 
         fn item(&self, position: u32) -> Option<glib::Object> {
-            todo!()
+            self.worker.borrow_mut().item(position)
         }
     }
 
     // Trait shared by all SqlListStores
     impl SqlListStoreImplManual for ReceiptListStore {
         type Entity = ReceiptEntityObject;
+        const TABLE_NAME: &'static str = "receipt";
 
-        fn borrow_worker(&self) -> std::cell::Ref<SqlListStoreWorker<Self::Entity>>
-        {
+        fn borrow_worker(&self) -> std::cell::Ref<SqlListStoreWorker<Self::Entity>> {
             self.worker.borrow()
         }
 
-        fn borrow_worker_mut(&self) -> std::cell::RefMut<SqlListStoreWorker<Self::Entity>>
-        {
+        fn borrow_worker_mut(&self) -> std::cell::RefMut<SqlListStoreWorker<Self::Entity>> {
             self.worker.borrow_mut()
         }
 
@@ -84,16 +85,12 @@ mod imp {
 
 glib::wrapper! {
     pub struct ReceiptListStore(ObjectSubclass<imp::ReceiptListStore>)
-        @extends SqlListStore,
+        //@extends SqlListStore,
         @implements gio::ListModel;
 }
 
 impl ReceiptListStore {
-    pub fn new(
-        table_name: &str,
-        item_type: glib::types::Type,
-        sorter: Option<gtk::Sorter>,
-    ) -> Self {
+    pub fn new(sorter: Option<gtk::Sorter>) -> Self {
         let obj: Self = glib::Object::builder().build();
         obj.set_sorter(sorter);
         obj
@@ -102,6 +99,8 @@ impl ReceiptListStore {
 
 impl Default for ReceiptListStore {
     fn default() -> Self {
-        Self::new("", glib::Object::static_type(), None)
+        Self::new(None)
     }
 }
+
+impl SqlListStoreExtManual for ReceiptListStore {}

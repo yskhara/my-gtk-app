@@ -6,8 +6,7 @@ use gtk::{
     SingleSelection,
 };
 
-use crate::dal;
-use crate::receiptlistitem::ReceiptEntityObject;
+use crate::database::prelude::*;
 
 // ANCHOR: object
 // Object holding the state
@@ -50,7 +49,6 @@ impl ObjectImpl for ReceiptEditWindow {
         self.button.connect_clicked(move |button| {
             // Set the label to "Hello World!" after the button has been clicked on
             button.set_label("Hello World!");
-            dal::add_receipt();
         });
 
         self.update_receipt_list();
@@ -65,7 +63,7 @@ impl ReceiptEditWindow {
 
     #[template_callback]
     fn button_add_entry_click_handler(&self, _button: &gtk::Button) {
-        dal::add_receipt();
+        //dal::add_receipt();
         self.update_receipt_list();
     }
 

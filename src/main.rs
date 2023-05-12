@@ -1,11 +1,8 @@
 mod ui;
-mod dal;
 mod entities;
-mod receiptlistitem;
-mod sqlliststore;
-mod receiptliststore;
+mod database;
 
-use dal::testdatagenerator;
+//use dal::testdatagenerator;
 use gtk::prelude::*;
 use gtk::{gio, glib, Application, Button};
 use ui::MainWindow;
@@ -35,7 +32,7 @@ fn button_clicked(button: &Button) {
 }
 
 fn build_ui(app: &Application) {
-    testdatagenerator::generate_test_receipt_data();
+    crate::database::testdatagenerator::generate_test_receipt_data();
 
     let window = MainWindow::new(app);
     window.present();

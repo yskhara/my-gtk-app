@@ -9,10 +9,7 @@ use gtk::{
 };
 
 use crate::entities::{ReceiptEntity, self};
-use crate::receiptlistitem::ReceiptEntityObject;
-use crate::dal;
-
-use crate::sqlliststore::SqlListStore;
+use crate::database::prelude::*;
 
 // ANCHOR: object
 // Object holding the state
@@ -22,7 +19,7 @@ pub struct MainWindow {
     #[template_child]
     pub button: TemplateChild<Button>,
     #[template_child]
-    pub receipt_list_view: TemplateChild<ColumnView>,
+    pub income_list_view: TemplateChild<ColumnView>,
     //item_list: Vec<&gtk::ListItem>,
     //model: gio::ListStore,
     //selection_model: SingleSelection,
@@ -78,8 +75,8 @@ impl ObjectImpl for MainWindow {
         //println!("Collected {:} receipts; Took {:?}.", cnt, start.elapsed());
         //let model = gtk::SortListModel::new(Some(model), Some(sorter.clone()));
 
-        let sorter = self.receipt_list_view.sorter().unwrap();
-        let model = SqlListStore::new("receipt", ReceiptEntityObject::static_type(), Some(sorter.clone()));
+        let sorter = self.income_list_view.sorter().unwrap();
+        let model = ReceiptListStore::new(Some(sorter.clone()));
         //let model = SqlListStore::new(None);
         println!("{:?}", model);
         println!(
@@ -88,7 +85,7 @@ impl ObjectImpl for MainWindow {
         );
         let model = SingleSelection::new(Some(model));
         //let model = NoSelection::new(Some(model));
-        self.receipt_list_view.set_model(Some(&model));
+        self.income_list_view.set_model(Some(&model));
 
         let sorter = gtk::NumericSorter::new(None::<gtk::Expression>);
         
@@ -97,8 +94,8 @@ impl ObjectImpl for MainWindow {
         col2.set_sorter(Some(&sorter));
         col2.set_id(Some(entities::ReceiptEntityColumn::Datetime.to_string()));
 
-        self.receipt_list_view.append_column(&col1);
-        self.receipt_list_view.append_column(&col2);
+        self.income_list_view.append_column(&col1);
+        self.income_list_view.append_column(&col2);
 
         // for column in self.receipt_list_view.columns().into_iter(){
         //     if let Ok(column) = column {
@@ -112,10 +109,10 @@ impl ObjectImpl for MainWindow {
         self.button.connect_clicked(move |button| {
             // Set the label to "Hello World!" after the button has been clicked on
             button.set_label("Hello World!");
-            dal::add_receipt();
+            //dal::add_receipt();
         });
 
-        self.receipt_list_view
+        self.income_list_view
             .connect_activate(move |_receipt_item_view, pos| {
                 println!("{}", pos);
             });
@@ -127,7 +124,7 @@ impl ObjectImpl for MainWindow {
 impl MainWindow {
     fn get_liststore(&self) -> Result<gio::ListStore, ()> {
         if let Some(model) = self
-            .receipt_list_view
+            .income_list_view
             .get()
             .model()
             .and_downcast_ref::<SingleSelection>()
@@ -161,7 +158,7 @@ impl MainWindow {
             //button.set_sensitive(true);
             println!("Done. Releasing the lock.");
 
-            dal::add_receipt();
+            //dal::add_receipt();
         } else {
             println!("Failed to obtain a lock. Returning...")
         }
