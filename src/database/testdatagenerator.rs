@@ -9,7 +9,7 @@ pub fn generate_test_receipt_data() {
     CREATE TABLE receipt (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, datetime INTEGER, store_key INTEGER, currency_key INTEGER, paid_amount INTEGER, payment_method_key INTEGER);
 
     DROP TABLE IF EXISTS income;
-    CREATE TABLE income (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, datetime INTEGER, store_key INTEGER, currency_key INTEGER, paid_amount INTEGER, payment_method_key INTEGER);
+    CREATE TABLE income (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, date INTEGER, currency_key INTEGER, amount INTEGER, company_key INTEGER);
 ";
     connection.execute_batch(query).unwrap();
 
@@ -34,6 +34,22 @@ pub fn generate_test_receipt_data() {
                 (":store_key", &between.sample(&mut rng)),
                 (":paid_amount", &2500),
                 (":payment_method_key", &2500),
+            ])
+            .unwrap();
+    }
+    
+    let query = "INSERT INTO income (date, currency_key, amount, company_key) VALUES (:date, 392, :amount, :company_key);";
+    let mut statement = connection.prepare(query).unwrap();
+
+    for i in 0..1000 {
+        statement
+            .execute(&[
+                (
+                    ":date",
+                    &(date_start + ((date_end - date_start) as i64 * i / num_entry)),
+                ),
+                (":amount", &between.sample(&mut rng)),
+                (":company_key", &2500),
             ])
             .unwrap();
     }
