@@ -1,4 +1,5 @@
 use super::sqlentity::EntityFromSql;
+use super::sqlentity::*;
 use crate::entities::ReceiptEntityColumn;
 use glib::{Object, ParamSpec, ParamSpecInt64, ParamSpecUInt, Value};
 use gtk::glib;
@@ -6,7 +7,6 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use once_cell::sync::Lazy;
 use std::cell::Cell;
-use super::sqlentity::*;
 
 mod imp {
 
@@ -17,6 +17,7 @@ mod imp {
     pub struct ReceiptEntityObject {
         pub id: Cell<u32>,
         pub datetime: Cell<i64>,
+        pub paid_amount: Cell<u32>,
     }
 
     // The central trait for subclassing a GObject
@@ -69,10 +70,9 @@ mod imp {
                 //     self.entity.borrow_mut().currency_id =
                 //         value.get().expect("The value needs to be of type `u32`.")
                 // }
-                // "paidamount" => {
-                //     self.entity.borrow_mut().paid_amount =
-                //         value.get().expect("The value needs to be of type `u32`.")
-                // }
+                "paidamount" => self
+                    .paid_amount
+                    .set(value.get().expect("The value needs to be of type `u32`.")),
                 // "paymentmethodkey" => {
                 //     self.entity.borrow_mut().payment_method_key =
                 //         value.get().expect("The value needs to be of type `u32`.")
@@ -87,7 +87,7 @@ mod imp {
                 "datetime" => self.datetime.get().to_value(),
                 // "storekey" => self.entity.borrow().store_key.to_value(),
                 // "currencyid" => self.entity.borrow().currency_id.to_value(),
-                // "paidamount" => self.entity.borrow().paid_amount.to_value(),
+                "paidamount" => self.paid_amount.get().to_value(),
                 // "paymentmethodkey" => self.entity.borrow().payment_method_key.to_value(),
                 _ => unimplemented!(),
             }
@@ -116,6 +116,9 @@ impl EntityFromSql for ReceiptEntityObject {
         obj.imp()
             .datetime
             .set(row.get(ReceiptEntityColumn::Datetime.to_string())?);
+        obj.imp()
+            .paid_amount
+            .set(row.get(ReceiptEntityColumn::PaidAmount.to_string())?);
         Ok(obj)
     }
 }

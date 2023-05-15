@@ -54,16 +54,25 @@ impl ObjectImpl for MainWindow {
         // Call "constructed" on parent
         self.parent_constructed();
 
-        let col1factory = gtk::SignalListItemFactory::new();
-        let col2factory = gtk::SignalListItemFactory::new();
-        col1factory.connect_setup(Self::column_text_setup_handler);
-        col2factory.connect_setup(Self::column_text_setup_handler);
-        col1factory.connect_bind(Self::column_id_bind_handler);
-        col2factory.connect_bind(Self::column_datetime_bind_handler);
+        let col_id_factory = gtk::SignalListItemFactory::new();
+        let col_date_factory = gtk::SignalListItemFactory::new();
+        let col_amount_factory = gtk::SignalListItemFactory::new();
+        let col_store_factory = gtk::SignalListItemFactory::new();
+        let col_method_factory = gtk::SignalListItemFactory::new();
+        col_id_factory.connect_setup(Self::column_text_setup_handler);
+        col_date_factory.connect_setup(Self::column_text_setup_handler);
+        col_amount_factory.connect_setup(Self::column_text_setup_handler);
+        col_store_factory.connect_setup(Self::column_text_setup_handler);
+        col_method_factory.connect_setup(Self::column_text_setup_handler);
+        col_id_factory.connect_bind(Self::column_id_bind_handler);
+        col_date_factory.connect_bind(Self::column_datetime_bind_handler);
+        col_amount_factory.connect_bind(Self::column_amount_bind_handler);
 
-        let col1 = gtk::ColumnViewColumn::new(Some("ID"), Some(col1factory));
-        let col2 = gtk::ColumnViewColumn::new(Some("Date"), Some(col2factory));
-
+        let col_id = gtk::ColumnViewColumn::new(Some("ID"), Some(col_id_factory));
+        let col_date = gtk::ColumnViewColumn::new(Some("Date"), Some(col_date_factory));
+        let col_amount = gtk::ColumnViewColumn::new(Some("Amount"), Some(col_amount_factory));
+        let col_store = gtk::ColumnViewColumn::new(Some("Store"), Some(col_store_factory));
+        let col_method = gtk::ColumnViewColumn::new(Some("Method"), Some(col_method_factory));
         // Create new model
         //let model = gio::ListStore::new(ReceiptEntityObject::static_type());
         //let start = Instant::now();
@@ -89,13 +98,16 @@ impl ObjectImpl for MainWindow {
 
         let sorter = gtk::NumericSorter::new(None::<gtk::Expression>);
         
-        col1.set_sorter(Some(&sorter));
-        col1.set_id(Some(entities::ReceiptEntityColumn::Id.to_string()));
-        col2.set_sorter(Some(&sorter));
-        col2.set_id(Some(entities::ReceiptEntityColumn::Datetime.to_string()));
+        col_id.set_sorter(Some(&sorter));
+        col_id.set_id(Some(entities::ReceiptEntityColumn::Id.to_string()));
+        col_date.set_sorter(Some(&sorter));
+        col_date.set_id(Some(entities::ReceiptEntityColumn::Datetime.to_string()));
+        col_amount.set_sorter(Some(&sorter));
+        col_amount.set_id(Some(entities::ReceiptEntityColumn::PaidAmount.to_string()));
 
-        self.income_list_view.append_column(&col1);
-        self.income_list_view.append_column(&col2);
+        self.income_list_view.append_column(&col_id);
+        self.income_list_view.append_column(&col_date);
+        self.income_list_view.append_column(&col_amount);
 
         // for column in self.receipt_list_view.columns().into_iter(){
         //     if let Ok(column) = column {
@@ -205,6 +217,20 @@ impl MainWindow {
             .format("%Y-%m-%d %H:%m:%S")
             .to_string(),
         );
+    }
+
+    #[template_callback]
+    fn column_amount_bind_handler(_factory: &SignalListItemFactory, item: &glib::Object) {
+        let item = item.downcast_ref::<gtk::ListItem>().unwrap();
+        let child = item.child().unwrap().downcast::<Label>().unwrap();
+        let entry = item
+            .item()
+            .unwrap()
+            .downcast::<ReceiptEntityObject>()
+            .unwrap();
+        child.set_text(&entry.property::<u32>("paidamount").to_string());
+        //entry.bind_property("id", &child, "label").build();
+        //child.bind_property("source_property", target, target_property)
     }
 }
 
