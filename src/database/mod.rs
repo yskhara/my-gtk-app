@@ -11,6 +11,7 @@ pub mod sqlliststore;
 mod sqlliststoreworker;
 pub mod testdatagenerator;
 pub mod incomeliststore;
+pub mod sqldataaccessor;
 
 pub enum SortOrder {
     Ascending,
