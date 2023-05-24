@@ -2,14 +2,15 @@ use std::time::Instant;
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use glib::subclass::InitializingObject;
+use gtk::gio::SimpleAction;
 use gtk::subclass::prelude::*;
 use gtk::{
-    gio, glib, prelude::*, Button, ColumnView, CompositeTemplate, Label,
-    SignalListItemFactory, SingleSelection, NoSelection,
+    gio, glib, prelude::*, Button, ColumnView, CompositeTemplate, Label, NoSelection,
+    SignalListItemFactory, SingleSelection,
 };
 
-use crate::entities::{ReceiptEntity, self};
 use crate::database::prelude::*;
+use crate::entities::{self, ReceiptEntity};
 
 // ANCHOR: object
 // Object holding the state
@@ -97,7 +98,7 @@ impl ObjectImpl for MainWindow {
         self.income_list_view.set_model(Some(&model));
 
         let sorter = gtk::NumericSorter::new(None::<gtk::Expression>);
-        
+
         col_id.set_sorter(Some(&sorter));
         col_id.set_id(Some(entities::ReceiptEntityColumn::Id.to_string()));
         col_date.set_sorter(Some(&sorter));
@@ -128,6 +129,14 @@ impl ObjectImpl for MainWindow {
             .connect_activate(move |_receipt_item_view, pos| {
                 println!("{}", pos);
             });
+
+        let action_close = SimpleAction::new("about", None);
+        //let window = self.clone();
+        action_close.connect_activate(move |_, _| {
+            let about = gtk::AboutDialog::new();
+            about.set_visible(true);
+        });
+        self.obj().add_action(&action_close);
     }
 }
 // ANCHOR_END: object_impl

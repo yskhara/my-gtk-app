@@ -1,7 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
+  <menu id="main-menu">
+    <item>
+      <attribute name="label" translatable="yes">_Close window</attribute>
+      <attribute name="action">window.close</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">_Sensitive button</attribute>
+      <attribute name="action">win.sensitive-button</attribute>
+    </item>
+    <section>
+      <attribute name="label" translatable="yes">Orientation</attribute>
+      <item>
+        <attribute name="label" translatable="yes">_Horizontal</attribute>
+        <attribute name="action">win.orientation</attribute>
+        <attribute name="target">Horizontal</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_About</attribute>
+        <attribute name="action">win.about</attribute>
+      </item>
+    </section>
+  </menu>
   <template class="MyGtkAppWindow" parent="GtkApplicationWindow">
-    <property name="titlebar">My GTK App</property>
+    <property name="title">My GTK App</property>
     <property name="default-width">640</property>
     <property name="default-height">480</property>
     <property name="width-request">360</property>
@@ -11,6 +33,7 @@
           <object class="GtkMenuButton">
             <property name="icon-name">open-menu-symbolic</property>
             <property name="menu-model">main-menu</property>
+            <property name="tooltip-text" translatable="yes">Main Menu</property>
           </object>
         </child>
       </object>
