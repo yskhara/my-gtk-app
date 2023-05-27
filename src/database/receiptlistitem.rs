@@ -17,7 +17,10 @@ mod imp {
     pub struct ReceiptEntityObject {
         pub id: Cell<u32>,
         pub datetime: Cell<i64>,
+        pub store_key: Cell<u32>,
+        pub currency_key: Cell<u32>,
         pub paid_amount: Cell<u32>,
+        pub payment_method_key: Cell<u32>,
     }
 
     // The central trait for subclassing a GObject
@@ -62,21 +65,22 @@ mod imp {
                 "datetime" => self
                     .datetime
                     .set(value.get().expect("The value needs to be of type `i64`.")),
-                // "storekey" => {
-                //     self.entity.borrow_mut().store_key =
-                //         value.get().expect("The value needs to be of type `u32`.")
-                // }
-                // "currencyid" => {
-                //     self.entity.borrow_mut().currency_id =
-                //         value.get().expect("The value needs to be of type `u32`.")
-                // }
+                "store_key" => 
+                    self
+                    .store_key
+                    .set(value.get().expect("The value needs to be of type `u32`.")
+            ),
+                "currency_key" => self
+                .currency_key
+                .set(value.get().expect("The value needs to be of type `u32`.")
+        ),
                 "paidamount" => self
                     .paid_amount
                     .set(value.get().expect("The value needs to be of type `u32`.")),
-                // "paymentmethodkey" => {
-                //     self.entity.borrow_mut().payment_method_key =
-                //         value.get().expect("The value needs to be of type `u32`.")
-                // }
+                "payment_method_key" => self
+                .payment_method_key
+                .set(value.get().expect("The value needs to be of type `u32`.")
+    ),
                 _ => unimplemented!(),
             }
         }
@@ -85,10 +89,10 @@ mod imp {
             match pspec.name() {
                 "id" => self.id.get().to_value(),
                 "datetime" => self.datetime.get().to_value(),
-                // "storekey" => self.entity.borrow().store_key.to_value(),
-                // "currencyid" => self.entity.borrow().currency_id.to_value(),
+                "store_key" => self.store_key.get().to_value(),
+                "currency_key" => self.currency_key.get().to_value(),
                 "paidamount" => self.paid_amount.get().to_value(),
-                // "paymentmethodkey" => self.entity.borrow().payment_method_key.to_value(),
+                "payment_method_key" => self.payment_method_key.get().to_value(),
                 _ => unimplemented!(),
             }
         }
@@ -117,8 +121,17 @@ impl EntityFromSql for ReceiptEntityObject {
             .datetime
             .set(row.get(ReceiptEntityColumn::Datetime.to_string())?);
         obj.imp()
+            .store_key
+            .set(row.get(ReceiptEntityColumn::StoreKey.to_string())?);
+        obj.imp()
+            .currency_key
+            .set(row.get(ReceiptEntityColumn::CurrencyKey.to_string())?);
+        obj.imp()
             .paid_amount
             .set(row.get(ReceiptEntityColumn::PaidAmount.to_string())?);
+        obj.imp()
+            .payment_method_key
+            .set(row.get(ReceiptEntityColumn::PaymentMethodKey.to_string())?);
         Ok(obj)
     }
 }
