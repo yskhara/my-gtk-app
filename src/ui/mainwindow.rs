@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use num_format::{Locale, ToFormattedString};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use glib::subclass::InitializingObject;
 use gtk::gio::SimpleAction;
@@ -68,6 +69,8 @@ impl ObjectImpl for MainWindow {
         col_id_factory.connect_bind(Self::column_id_bind_handler);
         col_date_factory.connect_bind(Self::column_datetime_bind_handler);
         col_amount_factory.connect_bind(Self::column_amount_bind_handler);
+        col_store_factory.connect_bind(Self::column_store_bind_handler);
+        col_method_factory.connect_bind(Self::column_method_bind_handler);
 
         let col_id = gtk::ColumnViewColumn::new(Some("ID"), Some(col_id_factory));
         let col_date = gtk::ColumnViewColumn::new(Some("Date"), Some(col_date_factory));
@@ -88,7 +91,7 @@ impl ObjectImpl for MainWindow {
         let sorter = self.income_list_view.sorter().unwrap();
         let model = ReceiptListStore::new(Some(sorter.clone()));
         //let model = SqlListStore::new(None);
-        println!("{:?}", model);
+        dbg!(model.clone());
         println!(
             "is \"model\" a gio::ListModel? : {:?}",
             model.is::<gio::ListModel>()
@@ -105,10 +108,16 @@ impl ObjectImpl for MainWindow {
         col_date.set_id(Some(entities::ReceiptEntityColumn::Datetime.to_string()));
         col_amount.set_sorter(Some(&sorter));
         col_amount.set_id(Some(entities::ReceiptEntityColumn::PaidAmount.to_string()));
+        col_store.set_sorter(Some(&sorter));
+        col_store.set_id(Some(entities::ReceiptEntityColumn::StoreKey.to_string()));
+        col_method.set_sorter(Some(&sorter));
+        col_method.set_id(Some(entities::ReceiptEntityColumn::PaymentMethodKey.to_string()));
 
         self.income_list_view.append_column(&col_id);
         self.income_list_view.append_column(&col_date);
         self.income_list_view.append_column(&col_amount);
+        self.income_list_view.append_column(&col_store);
+        self.income_list_view.append_column(&col_method);
 
         // for column in self.receipt_list_view.columns().into_iter(){
         //     if let Ok(column) = column {
@@ -237,7 +246,35 @@ impl MainWindow {
             .unwrap()
             .downcast::<ReceiptEntityObject>()
             .unwrap();
-        child.set_text(&entry.property::<u32>("paidamount").to_string());
+        child.set_text(format!("JPY {}", &entry.property::<u32>("paid-amount").to_formatted_string(&Locale::en)).as_str());
+        //entry.bind_property("id", &child, "label").build();
+        //child.bind_property("source_property", target, target_property)
+    }
+
+    #[template_callback]
+    fn column_store_bind_handler(_factory: &SignalListItemFactory, item: &glib::Object) {
+        let item = item.downcast_ref::<gtk::ListItem>().unwrap();
+        let child = item.child().unwrap().downcast::<Label>().unwrap();
+        let entry = item
+            .item()
+            .unwrap()
+            .downcast::<ReceiptEntityObject>()
+            .unwrap();
+        child.set_text(&entry.property::<u32>("store-key").to_string());
+        //entry.bind_property("id", &child, "label").build();
+        //child.bind_property("source_property", target, target_property)
+    }
+
+    #[template_callback]
+    fn column_method_bind_handler(_factory: &SignalListItemFactory, item: &glib::Object) {
+        let item = item.downcast_ref::<gtk::ListItem>().unwrap();
+        let child = item.child().unwrap().downcast::<Label>().unwrap();
+        let entry = item
+            .item()
+            .unwrap()
+            .downcast::<ReceiptEntityObject>()
+            .unwrap();
+        child.set_text(&entry.property::<u32>("payment-method-key").to_string());
         //entry.bind_property("id", &child, "label").build();
         //child.bind_property("source_property", target, target_property)
     }

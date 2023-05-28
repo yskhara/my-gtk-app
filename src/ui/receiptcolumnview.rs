@@ -11,46 +11,28 @@ use crate::database::prelude::*;
 
 // ANCHOR: object
 // Object holding the state
-#[derive(CompositeTemplate, Default)]
-#[template(resource = "/org/gtk_rs/example/receipt-edit-window.ui")]
-pub struct ReceiptEditWindow {
-    #[template_child]
-    pub button: TemplateChild<Button>,
+#[derive(Default)]
+pub struct ReceiptColumnView {
 }
 // ANCHOR_END: object
 
 // ANCHOR: subclass
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
-impl ObjectSubclass for ReceiptEditWindow {
+impl ObjectSubclass for ReceiptColumnView {
     // `NAME` needs to match `class` attribute of template
-    const NAME: &'static str = "MyGtkAppReceiptEditWindow";
-    type Type = super::ReceiptEditWindow;
+    const NAME: &'static str = "MyGtkAppReceiptColumnView";
+    type Type = super::ReceiptColumnView;
     type ParentType = gtk::Window;
-
-    fn class_init(klass: &mut Self::Class) {
-        klass.bind_template();
-        klass.bind_template_callbacks();
-    }
-
-    fn instance_init(obj: &InitializingObject<Self>) {
-        obj.init_template();
-    }
 }
 // ANCHOR_END: subclass
 
 // ANCHOR: object_impl
 // Trait shared by all GObjects
-impl ObjectImpl for ReceiptEditWindow {
+impl ObjectImpl for ReceiptColumnView {
     fn constructed(&self) {
         // Call "constructed" on parent
         self.parent_constructed();
-
-        // Connect to "clicked" signal of `button`
-        self.button.connect_clicked(move |button| {
-            // Set the label to "Hello World!" after the button has been clicked on
-            button.set_label("Hello World!");
-        });
 
         self.update_receipt_list();
     }
@@ -58,7 +40,7 @@ impl ObjectImpl for ReceiptEditWindow {
 // ANCHOR_END: object_impl
 
 #[gtk::template_callbacks]
-impl ReceiptEditWindow {
+impl ReceiptColumnView {
     fn update_receipt_list(&self) {
     }
 
@@ -155,7 +137,7 @@ impl ReceiptEditWindow {
 }
 
 // Trait shared by all widgets
-impl WidgetImpl for ReceiptEditWindow {}
+impl WidgetImpl for ReceiptColumnView {}
 
 // Trait shared by all windows
-impl WindowImpl for ReceiptEditWindow {}
+impl WindowImpl for ReceiptColumnView {}

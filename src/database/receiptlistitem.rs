@@ -48,10 +48,10 @@ mod imp {
                 vec![
                     ParamSpecUInt::builder("id").build(),
                     ParamSpecInt64::builder("datetime").build(),
-                    ParamSpecUInt::builder("storekey").build(),
-                    ParamSpecUInt::builder("currencyid").build(),
-                    ParamSpecUInt::builder("paidamount").build(),
-                    ParamSpecUInt::builder("paymentmethodkey").build(),
+                    ParamSpecUInt::builder("store-key").build(),
+                    ParamSpecUInt::builder("currency-key").build(),
+                    ParamSpecUInt::builder("paid-amount").build(),
+                    ParamSpecUInt::builder("payment-method-key").build(),
                 ]
             });
             PROPERTIES.as_ref()
@@ -65,22 +65,18 @@ mod imp {
                 "datetime" => self
                     .datetime
                     .set(value.get().expect("The value needs to be of type `i64`.")),
-                "store_key" => 
-                    self
+                "store-key" => self
                     .store_key
-                    .set(value.get().expect("The value needs to be of type `u32`.")
-            ),
-                "currency_key" => self
-                .currency_key
-                .set(value.get().expect("The value needs to be of type `u32`.")
-        ),
-                "paidamount" => self
+                    .set(value.get().expect("The value needs to be of type `u32`.")),
+                "currency-key" => self
+                    .currency_key
+                    .set(value.get().expect("The value needs to be of type `u32`.")),
+                "paid-amount" => self
                     .paid_amount
                     .set(value.get().expect("The value needs to be of type `u32`.")),
-                "payment_method_key" => self
-                .payment_method_key
-                .set(value.get().expect("The value needs to be of type `u32`.")
-    ),
+                "payment-method-key" => self
+                    .payment_method_key
+                    .set(value.get().expect("The value needs to be of type `u32`.")),
                 _ => unimplemented!(),
             }
         }
@@ -89,10 +85,10 @@ mod imp {
             match pspec.name() {
                 "id" => self.id.get().to_value(),
                 "datetime" => self.datetime.get().to_value(),
-                "store_key" => self.store_key.get().to_value(),
-                "currency_key" => self.currency_key.get().to_value(),
-                "paidamount" => self.paid_amount.get().to_value(),
-                "payment_method_key" => self.payment_method_key.get().to_value(),
+                "store-key" => self.store_key.get().to_value(),
+                "currency-key" => self.currency_key.get().to_value(),
+                "paid-amount" => self.paid_amount.get().to_value(),
+                "payment-method-key" => self.payment_method_key.get().to_value(),
                 _ => unimplemented!(),
             }
         }

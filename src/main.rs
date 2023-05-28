@@ -1,6 +1,7 @@
 mod ui;
 mod entities;
 mod database;
+mod currency;
 
 //use dal::testdatagenerator;
 use gtk::prelude::*;

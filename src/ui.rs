@@ -1,7 +1,8 @@
 mod mainwindow;
+mod receiptcolumnview;
 mod receipteditwindow;
 
-use gtk::{glib, gio};
+use gtk::{gio, glib};
 
 glib::wrapper! {
     pub struct MainWindow(ObjectSubclass<mainwindow::MainWindow>)
@@ -29,3 +30,14 @@ impl ReceiptEditWindow {
     }
 }
 
+glib::wrapper! {
+    pub struct ReceiptColumnView(ObjectSubclass<receiptcolumnview::ReceiptColumnView>)
+        @extends gtk::ColumnView, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Scrollable;
+}
+
+impl ReceiptColumnView {
+    pub fn new() -> Self {
+        glib::Object::builder().build()
+    }
+}

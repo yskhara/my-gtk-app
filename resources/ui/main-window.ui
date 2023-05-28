@@ -109,7 +109,7 @@
                     <property name="min-content-width">400</property>
                     <property name="min-content-height">320</property>
                     <child>
-                      <object class="GtkColumnView" id="bank_transaction_column_view" />
+                      <object class="MyGtkAppReceiptColumnView" id="bank_transaction_column_view" />
                     </child>
                   </object>
                 </property>
